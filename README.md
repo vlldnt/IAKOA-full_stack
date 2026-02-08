@@ -28,7 +28,7 @@ IAKOA est une application web qui permet de découvrir, créer et gérer des év
 
 - Node.js 18+ installé sur la machine.
 - PostgreSQL 13+ ou instance managée (local ou cloud).
-- npm ou yarn pour la gestion des dépendances.
+- npm  pour la gestion des dépendances.
 - Optionnel : Docker si vous utilisez une stack conteneurisée.
 
 ---
@@ -38,5 +38,6 @@ IAKOA est une application web qui permet de découvrir, créer et gérer des év
 Cloner le dépôt :
 
 ```bash
-git clone https://github.com/ton-compte/iakoa.git
-cd iakoa
+git clone https://github.com/ton-compte/IAKOA-full_stack.git
+cd IAKOA-full_stack
+```
