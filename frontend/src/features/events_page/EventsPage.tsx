@@ -64,7 +64,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
                            grid-cols-1
                            sm:grid-cols-2
                            xl:grid-cols-3
-                           place-items-center
+                           place-items-start
                            max-w-sm sm:max-w-2xl xl:max-w-6xl"
               >
                 {events.map((event) => (

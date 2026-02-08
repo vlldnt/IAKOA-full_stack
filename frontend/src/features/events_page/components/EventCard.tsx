@@ -28,7 +28,7 @@ export function EventCard({ event }: EventCardProps) {
 
   return (
     <div
-      className={`card w-full max-w-85 h-fit transition-all duration-300 cursor-pointer bg-white/85 ${
+      className={`card w-full max-w-85 h-80 transition-all duration-300 cursor-pointer bg-white/85 flex flex-col ${
         isActive ? 'shadow-2xl scale-105' : 'hover:shadow-2xl hover:scale-105'
       }`}
       onClick={() => setIsActive(!isActive)}
@@ -42,7 +42,7 @@ export function EventCard({ event }: EventCardProps) {
         />
       </figure>
 
-      <div className="card-body p-4 gap-2">
+      <div className="card-body p-4 gap-2 flex-1 flex flex-col justify-between">
         {/* Titre + Catégories */}
         <div className="space-y-1">
           <h2 className="card-title text-base line-clamp-2">{event.name}</h2>
