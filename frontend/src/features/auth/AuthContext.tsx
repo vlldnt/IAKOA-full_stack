@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { UserType, AuthContextType } from './AuthType';
+import type { UserType, AuthContextType } from '../../lib/types/AuthType';
 import { isValidUser } from '@/utils/validators';
 import * as tokenService from '@/lib/services/tokenService';
 import * as authService from '@/lib/services/authService';

@@ -66,6 +66,13 @@ export class EventResponseDto {
   companyId: string;
 
   @ApiProperty({
+    description: 'Informations sur la société organisatrice',
+    example: { name: 'Mon Entreprise', ownerId: '550e8400-e29b-41d4-a716-446655440000' },
+    required: false,
+  })
+  company?: { name: string; ownerId: string };
+
+  @ApiProperty({
     description: "Site web de l'évènement",
     example: 'https://example.com/event',
     nullable: true,
@@ -96,7 +103,7 @@ export class EventResponseDto {
   })
   media: MediaResponseDto[];
 
-  constructor(event: Event & { media?: any[] }) {
+  constructor(event: Event & { media?: any[]; company?: any }) {
     this.id = event.id;
     this.createdAt = event.createdAt;
     this.updatedAt = event.updatedAt;
@@ -109,5 +116,6 @@ export class EventResponseDto {
     this.website = event.website;
     this.categories = event.categories;
     this.media = event.media ? event.media.map(m => new MediaResponseDto(m)) : [];
+    this.company = event.company ? { name: event.company.name, ownerId: event.company.ownerId } : undefined;
   }
 }

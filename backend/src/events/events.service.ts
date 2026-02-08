@@ -85,7 +85,7 @@ export class EventsService {
 
   async findAll(): Promise<EventResponseDto[]> {
     const events = await this.prisma.event.findMany({
-      include: { media: true },
+      include: { media: true, company: true },
       orderBy: { date: 'desc' },
     });
     return events.map(event => new EventResponseDto(event));
