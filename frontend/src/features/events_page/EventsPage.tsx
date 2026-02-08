@@ -37,9 +37,9 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
   return (
     <div className="w-full min-h-screen bg-white pt-20 md:pt-8 pb-8 md:pb-8">
-      <div ref={contentRef} className="w-full mx-auto">
+      <div ref={contentRef} className="w-full lg:w-[90%] xl:w-[70%] mx-auto">
         {showCards ? (
-          <div className="w-full px-4 md:px-8">
+          <div className="w-full">
             {isLoading && (
               <div className="text-center py-12">
                 <span className="loading loading-spinner loading-lg"></span>
@@ -60,12 +60,12 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
             {!isLoading && !error && events.length > 0 && (
               <div
-                className="grid gap-6 w-full mx-auto
+                className="grid gap-6 w-full
                            grid-cols-1
                            sm:grid-cols-2
-                           xl:grid-cols-3
-                           place-items-start
-                           max-w-sm sm:max-w-2xl xl:max-w-6xl"
+                           lg:grid-cols-3
+                           xl:grid-cols-4
+                           place-items-start"
               >
                 {events.map((event) => (
                   <EventCard key={event.id} event={event} />

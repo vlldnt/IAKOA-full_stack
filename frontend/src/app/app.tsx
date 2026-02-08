@@ -26,7 +26,7 @@ export function Layout() {
     <>
       <Header ref={headerRef} />
       <main
-        className="min-h-screen flex pb-16 xl:pb-0"
+        className="min-h-screen flex pb-16 xl:pb-0 bg-white w-full"
         style={{ paddingTop: headerHeight }}
       >
         <Outlet />
