@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-iakoa-blue: #2397FF;
+}
+
+body {
+  font-family: Calibri, Arial, sans-serif;
+}

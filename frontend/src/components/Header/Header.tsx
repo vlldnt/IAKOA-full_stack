@@ -1,0 +1,159 @@
+import { forwardRef, useState } from "react";
+import iakoaLogo from "@/assets/logo-iakoa.svg";
+import { Link } from "react-router-dom";
+import MenuLink from "./components/MenuLink";
+import { useAuth } from "@/features/auth/AuthContext";
+import { SearchBars } from "./components/SearchBar";
+import { User, Heart, CalendarPlus, LogOut, LogIn } from "lucide-react";
+import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
+import login from '@/assets/images/login.png';
+import happy from '@/assets/images/happy.png';
+
+// Header principal de l'application
+const Header = forwardRef<HTMLElement>(function Header(_, ref) {
+  const { user, logout } = useAuth();
+  const [isLogin, setIsLogin] = useState(true);
+
+  const openAuthModal = () => {
+    (document.getElementById('auth_modal') as HTMLDialogElement)?.showModal();
+  };
+
+  return (
+    <>
+      {/* Header responsive */}
+      <header
+        ref={ref}
+        className="fixed w-full top-0 p-3 sm:p-4 lg:p-6 shadow-md z-50 bg-white"
+      >
+        <div className="h-full max-w-full lg:max-w-[95%] mx-auto flex flex-col lg:flex-row gap-3 lg:gap-4 justify-center lg:justify-between items-center">
+          {/* Colonne gauche - Logo (30%) */}
+          <div className="hidden lg:flex lg:w-[30%] items-center">
+            <Link to="/">
+              <img src={iakoaLogo} alt="Logo IAKOA" className="w-55 min-w-55 max-w-55" />
+            </Link>
+          </div>
+
+          {/* Colonne centrale - SearchBar (flexible) */}
+          <div className="w-full lg:flex-1 flex items-center justify-center">
+            <SearchBars />
+          </div>
+
+          {/* Colonne droite - Menu classique (30%) */}
+          <div className="hidden lg:flex lg:w-[30%] items-center justify-end">
+            <ul className="flex gap-1 rounded-lg">
+              <MenuLink page="Évènements" link="/" icon={Heart} />
+              <MenuLink page="Favoris" link="/favorites" icon={Heart} />
+              <MenuLink page="Créer" link="/create" icon={CalendarPlus} />
+              {user ? (
+                <>
+                  <MenuLink page="Profil" link="/profile" icon={User} />
+                  <MenuLink
+                    page="Déconnexion"
+                    onClick={logout}
+                    variant="danger"
+                    icon={LogOut}
+                  />
+                </>
+              ) : (
+                <MenuLink page="Se connecter" onClick={openAuthModal} icon={LogIn} />
+              )}
+            </ul>
+          </div>
+        </div>
+      </header>
+
+      {/* Menu mobile/tablette - fixé en bas */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-50">
+        <ul className="flex justify-around items-center py-2 px-4 max-w-md mx-auto">
+          <MenuLink page="Évènements" link="/" icon={Heart} />
+          <MenuLink page="Favoris" link="/favorites" icon={Heart} />
+          <MenuLink page="Créer" link="/create" icon={CalendarPlus} />
+          {user ? (
+            <>
+              <MenuLink page="Profil" link="/profile" icon={User} />
+              <MenuLink
+                page="Déconnexion"
+                onClick={logout}
+                variant="danger"
+                icon={LogOut}
+              />
+            </>
+          ) : (
+            <MenuLink page="Se connecter" onClick={openAuthModal} icon={LogIn} />
+          )}
+        </ul>
+      </nav>
+
+      {/* Modal d'authentification unique partagée */}
+      <dialog id="auth_modal" className="modal">
+        <div className="modal-box max-w-4xl p-0 overflow-hidden h-150 max-h-[90vh]">
+          <div className="flex h-full">
+            {/* Colonne gauche - Formulaires */}
+            <div className="flex-1 p-8 flex flex-col justify-center">
+              {/* Onglets de navigation avec indicateur animé */}
+              <div className="relative flex bg-gray-100 rounded-lg p-1 mb-6">
+                {/* Indicateur de sélection qui glisse entre les onglets */}
+                <div
+                  className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-md shadow-sm transition-transform duration-300 ease-out ${
+                    isLogin ? 'translate-x-0' : 'translate-x-full'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(true)}
+                  className={`relative z-10 flex-1 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                    isLogin
+                      ? 'text-iakoa-blue'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Se connecter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(false)}
+                  className={`relative z-10 flex-1 justify-center py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                    !isLogin
+                      ? 'text-iakoa-blue'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Créer un compte
+                </button>
+              </div>
+
+              {/* Formulaire unifié avec animations */}
+              <UnifiedAuthForm isLogin={isLogin} />
+            </div>
+
+            {/* Colonne droite - Image et titre */}
+            <div className="hidden md:flex flex-1 bg-gray-50 flex-col justify-center items-center p-8">
+              <img className="max-w-60 m-8" src={iakoaLogo} alt="" />
+              <h2 className="text-3xl font-semibold text-gray-700 mb-2">
+                {isLogin ? 'Bon retour !' : 'Bienvenue sur IAKOA'}
+              </h2>
+              <p className="text-gray-500 mb-6">
+                {isLogin
+                  ? 'Connectez-vous pour accéder à votre compte.'
+                  : 'Remplissez les informations pour vous inscrire.'}
+              </p>
+              <div className="w-full max-w-s">
+                <img
+                  src={isLogin ? login : happy}
+                  alt="Bienvenue"
+                  className="w-full h-64 object-cover rounded-2xl shadow-lg transition-opacity duration-500 ease-in-out"
+                  key={isLogin ? 'login' : 'register'}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>Fermer</button>
+        </form>
+      </dialog>
+    </>
+  );
+});
+
+export default Header;
