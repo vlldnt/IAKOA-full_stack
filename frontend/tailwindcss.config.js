@@ -10,7 +10,6 @@ module.exports = {
       },
       colors: {
         'iakoa-blue': '#2397FF',
-        'blue-iakoa': '#2397FF',
       },
     },
   },

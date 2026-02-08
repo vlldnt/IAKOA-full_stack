@@ -29,7 +29,7 @@ function MenuLink({ page, link, onClick, variant = 'default', icon: Icon }: Menu
     <li>
       {/* Si onClick fourni, afficher un bouton, sinon un Link */}
       {onClick ? (
-        <button onClick={onClick} className={`text-blue-iakoa ${baseClass} ${variantClass}`}>
+        <button onClick={onClick} className={`text-iakoa-blue ${baseClass} ${variantClass}`}>
           {content}
         </button>
       ) : (

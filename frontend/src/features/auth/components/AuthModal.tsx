@@ -23,7 +23,7 @@ export function AuthModal() {
         }
         icon={LogIn}
       />
-      <dialog id="auth_modal" className="modal">
+      <dialog id="auth_modal" className="modal flex justify-center items-center">
         <div className="modal-box max-w-4xl p-0 overflow-hidden h-150 max-h-[90vh]">
           <div className="flex h-full">
             {/* Colonne gauche - Formulaires */}

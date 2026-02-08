@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
 @import "tailwindcss";
-@plugin 'daisyui';
+@plugin "daisyui";
 
 * {
     font-family: 'Varela Round', Calibri, 'Segoe UI', sans-serif !important;
@@ -8,17 +8,4 @@
 
 body {
     font-family: 'Varela Round', Calibri, 'Segoe UI', sans-serif !important;
-}
-
-/* Classes pour blue-iakoa */
-.blue-iakoa {
-    @apply bg-blue-iakoa text-white;
-}
-
-.btn-blue-iakoa {
-    @apply btn bg-blue-iakoa text-white hover:bg-blue-600 border-blue-iakoa;
-}
-
-.text-blue-iakoa {
-    @apply text-blue-iakoa;
 }
