@@ -32,7 +32,7 @@ function EventsPage({ text, showCards = false }: EventsPageProps) {
   const cards = [1, 2, 3, 4, 5, 6]; // juste un exemple, tu peux mettre tes vrais events
 
   return (
-    <div className="w-full min-h-screen bg-linear-to-b from-gray-50 to-gray-100 pt-20 md:pt-8 pb-8 md:pb-8 ">
+    <div className="w-full min-h-screen bg-white pt-20 md:pt-8 pb-8 md:pb-8 ">
       <div ref={contentRef} className="w-full mx-auto">
         {showCards ? (
           <div className="w-full px-4 md:px-8">
