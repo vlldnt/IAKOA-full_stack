@@ -157,6 +157,11 @@ export class UsersService {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
+    // Vérifier si l'utilisateur a un mot de passe (non OAuth)
+    if (!user.password) {
+      throw new UnauthorizedException('Cet utilisateur utilise une authentification OAuth (Google/Facebook). Veuillez vous connecter avec le même fournisseur.');
+    }
+
     const isPasswordValid = await bcrypt.compare(loginUserDto.password, user.password);
 
     if (!isPasswordValid) {

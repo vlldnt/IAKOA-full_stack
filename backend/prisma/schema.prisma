@@ -94,17 +94,22 @@ model User {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   name          String         @db.VarChar(30)
-  password      String
+  password      String?        // Optionnel pour les utilisateurs OAuth
   email         String         @unique
+  avatar        String?        // Photo de profil (fournie par OAuth)
+  provider      String         @default("local") // "local", "google", "facebook"
+  providerId    String?        // ID unique chez le provider OAuth
   role          Role           @default(USER)
   isCreator     Boolean        @default(false)
   refreshToken  String?
   companies     Company[]
   userFavorites UserFavorite[]
 
+  @@unique([provider, providerId])
   @@index([email])
   @@index([isCreator])
   @@index([role])
+  @@index([provider])
   @@map("users")
 }
 

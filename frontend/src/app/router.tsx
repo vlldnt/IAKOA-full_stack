@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './app';
 import EventsPage from '@/features/events_page/EventsPage';
+import { OAuthCallback } from '@/features/auth/components/OAuthCallback';
 
 export function AppRouter() {
   return (
@@ -11,6 +12,8 @@ export function AppRouter() {
         <Route path="/create" element={<EventsPage text="Créer votre évènement." />} />
         <Route path="/favorites" element={<EventsPage text="Vos favoris ici, que faire ce soir ?" />} />
       </Route>
+      {/* Route OAuth callback sans le Layout (page standalone) */}
+      <Route path="/auth/callback" element={<OAuthCallback />} />
     </Routes>
   );
 }

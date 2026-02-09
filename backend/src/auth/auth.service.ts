@@ -128,4 +128,69 @@ export class AuthService {
   async validateUserById(userId: string) {
     return this.usersService.findOne(userId);
   }
+
+  async validateOAuthUser(oauthData: {
+    provider: string;
+    providerId: string;
+    email: string;
+    name: string;
+    avatar?: string;
+  }) {
+    try {
+      // Chercher l'utilisateur par provider et providerId
+      let user = await this.prisma.user.findUnique({
+        where: {
+          provider_providerId: {
+            provider: oauthData.provider,
+            providerId: oauthData.providerId,
+          },
+        },
+      });
+
+      // Si l'utilisateur n'existe pas, le créer
+      if (!user) {
+        user = await this.prisma.user.create({
+          data: {
+            provider: oauthData.provider,
+            providerId: oauthData.providerId,
+            email: oauthData.email,
+            name: oauthData.name,
+            avatar: oauthData.avatar,
+            // Pas de password pour les utilisateurs OAuth
+            isCreator: false,
+          },
+        });
+      } else {
+        // Mettre à jour l'avatar si fourni (au cas où il a changé)
+        if (oauthData.avatar && user.avatar !== oauthData.avatar) {
+          user = await this.prisma.user.update({
+            where: { id: user.id },
+            data: { avatar: oauthData.avatar },
+          });
+        }
+      }
+
+      return user;
+    } catch (error) {
+      throw new UnauthorizedException('Erreur lors de l\'authentification OAuth');
+    }
+  }
+
+  async loginOAuth(user: any) {
+    const tokens = await this.generateTokens(user.id, user.email);
+    await this.updateRefreshToken(user.id, tokens.refresh_token);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        provider: user.provider,
+        isCreator: user.isCreator,
+        role: user.role,
+      },
+      ...tokens,
+    };
+  }
 }
