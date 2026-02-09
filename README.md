@@ -30,6 +30,7 @@ IAKOA est une application web qui permet de découvrir, créer et gérer des év
 - PostgreSQL 13+ ou instance managée (local ou cloud).
 - npm  pour la gestion des dépendances.
 - Optionnel : Docker si vous utilisez une stack conteneurisée.
+- `npm i -D daisyui@latest`
 
 ---
 
