@@ -1,6 +1,7 @@
 import { Calendar, Euro, Clock } from 'lucide-react';
 import { useState } from 'react';
 import type { EventType } from '@/lib/types/EventType';
+import { getCategoryLabel, getCategoryHexColor } from '@/lib/constants/event-category.config';
 
 interface EventCardProps {
   event: EventType;
@@ -67,11 +68,21 @@ export function EventCard({ event }: EventCardProps) {
         <div className="space-y-1">
           <h2 className="card-title text-base line-clamp-2">{event.name}</h2>
           <div className="flex flex-wrap gap-1">
-            {event.categories.map((category) => (
-              <div key={category} className="badge badge-sm badge-primary">
-                {category.charAt(0) + category.slice(1).toLocaleLowerCase()}
-              </div>
-            ))}
+            {event.categories.map((category) => {
+              const hexColor = getCategoryHexColor(category);
+              return (
+                <div
+                  key={category}
+                  className="px-2 py-1 rounded text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: `${hexColor}15`, // 15% opacity pour le fond
+                    color: hexColor,
+                  }}
+                >
+                  {getCategoryLabel(category)}
+                </div>
+              );
+            })}
           </div>
         </div>
 
