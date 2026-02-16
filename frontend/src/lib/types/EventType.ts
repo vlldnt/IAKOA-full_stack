@@ -39,6 +39,7 @@ export interface EventContextType {
   fetchEvents: () => Promise<void>;
   fetchEventsPaginated: (page: number, limit: number) => Promise<void>;
   fetchMoreEvents: (page: number, limit: number) => Promise<void>;
+  prefetchNextPage: (page: number, limit: number) => Promise<void>;
   selectEvent: (id: string) => Promise<void>;
   createEvent: (event: Omit<EventType, "id">) => Promise<EventType>;
   updateEvent: (id: string, event: Partial<EventType>) => Promise<EventType>;

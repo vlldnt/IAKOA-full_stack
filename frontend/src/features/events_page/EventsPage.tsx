@@ -12,7 +12,7 @@ interface EventsPageProps {
 function EventsPage({ text, showCards = true }: EventsPageProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { events = [], isLoading = false, error = null, fetchEventsPaginated, fetchMoreEvents, totalPages = 1 } = useEvents();
+  const { events = [], isLoading = false, error = null, fetchEventsPaginated, fetchMoreEvents, prefetchNextPage, totalPages = 1 } = useEvents();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -33,10 +33,13 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     return () => window.removeEventListener('resize', calculateMargin);
   }, []);
 
-  // Fetch events au montage du composant
+  // Fetch events au montage du composant et prefetch page 2
   useEffect(() => {
     if (fetchEventsPaginated) {
-      fetchEventsPaginated(1, itemsPerPage);
+      fetchEventsPaginated(1, itemsPerPage).then(() => {
+        // Prefetch page 2 après le chargement de page 1
+        prefetchNextPage(2, itemsPerPage);
+      });
     }
   }, []);
 
@@ -67,10 +70,13 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     };
   }, [isLoading, currentPage, totalPages]);
 
-  // Quand la page change, charger plus d'événements
+  // Quand la page change, charger plus d'événements et prefetch la suivante
   useEffect(() => {
     if (currentPage > 1 && fetchMoreEvents) {
-      fetchMoreEvents(currentPage, itemsPerPage);
+      fetchMoreEvents(currentPage, itemsPerPage).then(() => {
+        // Prefetch la page suivante après le chargement
+        prefetchNextPage(currentPage + 1, itemsPerPage);
+      });
     }
   }, [currentPage]);
 

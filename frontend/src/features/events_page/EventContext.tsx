@@ -14,6 +14,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
+  const [prefetchedPage, setPrefetchedPage] = useState<number | null>(null);
+  const [prefetchedData, setPrefetchedData] = useState<EventType[]>([]);
 
   // Récupère tous les événements publics
   const fetchEvents = async () => {
@@ -72,7 +74,17 @@ export function EventProvider({ children }: { children: ReactNode }) {
     setError(null);
     const startTime = Date.now();
     try {
-      const response = await eventsService.fetchEventsPaginated(page, limit);
+      // Vérifier si les données sont déjà prefetchées
+      let response;
+      if (prefetchedPage === page && prefetchedData.length > 0) {
+        // Utiliser les données prefetchées
+        response = prefetchedData;
+        setPrefetchedPage(null);
+        setPrefetchedData([]);
+      } else {
+        // Charger les données normalement
+        response = await eventsService.fetchEventsPaginated(page, limit);
+      }
 
       // Attendre au moins 0.5 secondes pour montrer le loader
       const elapsed = Date.now() - startTime;
@@ -98,6 +110,29 @@ export function EventProvider({ children }: { children: ReactNode }) {
       setError(message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Prefetch la page suivante en arrière-plan
+  const prefetchNextPage = async (nextPage: number, limit: number = 12) => {
+    if (nextPage > totalPages) return; // Ne pas prefetch au-delà du total
+
+    try {
+      const response = await eventsService.fetchEventsPaginated(nextPage, limit);
+
+      let data: EventType[] = [];
+      if (Array.isArray(response)) {
+        const start = (nextPage - 1) * limit;
+        data = response.slice(start, start + limit);
+      } else {
+        data = response.data || [];
+      }
+
+      setPrefetchedPage(nextPage);
+      setPrefetchedData(data);
+    } catch (err) {
+      // Silencieusement échouer - ce n'est que du prefetching
+      console.error("Prefetch error:", err);
     }
   };
 
@@ -216,6 +251,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         createEvent,
         updateEvent,
         deleteEvent,
+        prefetchNextPage,
       }}
     >
       {children}
