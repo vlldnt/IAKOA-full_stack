@@ -65,7 +65,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
                            sm:grid-cols-2
                            lg:grid-cols-3
                            xl:grid-cols-4
-                           place-items-start"
+                           place-items-center lg:place-items-start"
               >
                 {events.map((event) => (
                   <EventCard key={event.id} event={event} />

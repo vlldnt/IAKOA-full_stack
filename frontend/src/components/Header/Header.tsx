@@ -2,9 +2,10 @@ import { forwardRef, useState } from "react";
 import iakoaLogo from "@/assets/logo-iakoa.svg";
 import { Link } from "react-router-dom";
 import MenuLink from "./components/MenuLink";
+import ProfileDropdown from "./components/ProfileDropdown";
 import { useAuth } from "@/features/auth/AuthContext";
 import { SearchBars } from "./components/SearchBar";
-import { User, Heart, CalendarPlus, LogOut, LogIn } from "lucide-react";
+import { PartyPopper, CalendarPlus, LogIn, Map } from "lucide-react";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import login from '@/assets/images/login.png';
 import happy from '@/assets/images/happy.png';
@@ -25,7 +26,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
         ref={ref}
         className="fixed w-full top-0 p-3 sm:p-4 lg:p-6 shadow-md z-50 bg-white"
       >
-        <div className="h-full max-w-full lg:max-w-[95%] mx-auto flex flex-col lg:flex-row gap-3 lg:gap-4 justify-center lg:justify-between items-center">
+        <div className="h-full max-w-full lg:max-w-[90%] mx-auto flex flex-col lg:flex-row gap-3 lg:gap-4 justify-center lg:justify-between items-center">
           {/* Colonne gauche - Logo (30%) */}
           <div className="hidden lg:flex lg:w-[30%] items-center">
             <Link to="/">
@@ -40,20 +41,14 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
 
           {/* Colonne droite - Menu classique (30%) */}
           <div className="hidden lg:flex lg:w-[30%] items-center justify-end">
-            <ul className="flex gap-1 rounded-lg">
-              <MenuLink page="Évènements" link="/" icon={Heart} />
-              <MenuLink page="Favoris" link="/favorites" icon={Heart} />
-              <MenuLink page="Créer" link="/create" icon={CalendarPlus} />
+            <ul className="flex gap-1 items-center rounded-lg">
+              <MenuLink page="Évènements" link="/" icon={PartyPopper} />
+              <MenuLink page="Carte" link="/map" icon={Map} />
+              {user?.isCreator && <MenuLink page="Créer" link="/create" icon={CalendarPlus} />}
               {user ? (
-                <>
-                  <MenuLink page="Profil" link="/profile" icon={User} />
-                  <MenuLink
-                    page="Déconnexion"
-                    onClick={logout}
-                    variant="danger"
-                    icon={LogOut}
-                  />
-                </>
+                <li>
+                  <ProfileDropdown user={user} onLogout={logout} />
+                </li>
               ) : (
                 <MenuLink page="Se connecter" onClick={openAuthModal} icon={LogIn} />
               )}
@@ -65,19 +60,13 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
       {/* Menu mobile/tablette - fixé en bas */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-50">
         <ul className="flex justify-around items-center py-2 px-4 max-w-md mx-auto">
-          <MenuLink page="Évènements" link="/" icon={Heart} />
-          <MenuLink page="Favoris" link="/favorites" icon={Heart} />
-          <MenuLink page="Créer" link="/create" icon={CalendarPlus} />
+          <MenuLink page="Évènements" link="/" icon={PartyPopper} />
+          <MenuLink page="Carte" link="/map" icon={Map} />
+          {user?.isCreator && <MenuLink page="Créer" link="/create" icon={CalendarPlus} />}
           {user ? (
-            <>
-              <MenuLink page="Profil" link="/profile" icon={User} />
-              <MenuLink
-                page="Déconnexion"
-                onClick={logout}
-                variant="danger"
-                icon={LogOut}
-              />
-            </>
+            <li>
+              <ProfileDropdown user={user} onLogout={logout} />
+            </li>
           ) : (
             <MenuLink page="Se connecter" onClick={openAuthModal} icon={LogIn} />
           )}

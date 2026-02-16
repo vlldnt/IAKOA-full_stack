@@ -1,9 +1,31 @@
-import { Calendar, DollarSign, Users } from 'lucide-react';
+import { Calendar, DollarSign, Clock } from 'lucide-react';
 import { useState } from 'react';
 import type { EventType } from '@/lib/types/EventType';
 
 interface EventCardProps {
   event: EventType;
+}
+
+function getRemainingTime(dateString: string) {
+  const now = new Date().getTime();
+  const eventTime = new Date(dateString).getTime();
+  const diff = eventTime - now;
+
+  if (diff <= 0) return 'Événement terminé';
+
+  const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(
+    (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+  );
+  const minutes = Math.floor(
+    (diff % (1000 * 60 * 60)) / (1000 * 60)
+  );
+
+  if (months > 0) return `${months} mois`
+  if (days > 0) return `${days}j ${hours}h`;
+  if (hours > 0) return `${hours}h`;
+  return `Aujourd'hui`;
 }
 
 export function EventCard({ event }: EventCardProps) {
@@ -20,6 +42,7 @@ export function EventCard({ event }: EventCardProps) {
     minute: '2-digit',
   });
   const formattedDate = `${dayName} ${day}/${month} à ${time}`;
+  const remainingTime = getRemainingTime(event.date);
 
   const priceText =
     event.pricing === 0 ? 'Gratuit' : `À partir de ${event.pricing / 100}€`;
@@ -49,7 +72,7 @@ export function EventCard({ event }: EventCardProps) {
           <div className="flex flex-wrap gap-1">
             {event.categories.map((category) => (
               <div key={category} className="badge badge-sm badge-primary">
-                {category}
+                {category.charAt(0) + category.slice(1).toLocaleLowerCase()}
               </div>
             ))}
           </div>
@@ -58,18 +81,18 @@ export function EventCard({ event }: EventCardProps) {
         {/* Infos */}
         <div className="space-y-1 text-xs">
           <div className="flex items-center gap-2">
+            <Clock size={14} className="shrink-0" />
+            <span>{remainingTime}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
             <Calendar size={14} className="shrink-0" />
-            <span>Début: {formattedDate}</span>
+            <span>{formattedDate}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <DollarSign size={14} className="shrink-0" />
             <span>{priceText}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Users size={14} className="shrink-0" />
-            <span>Créé par {event.company?.name || 'Organisation'}</span>
           </div>
         </div>
       </div>

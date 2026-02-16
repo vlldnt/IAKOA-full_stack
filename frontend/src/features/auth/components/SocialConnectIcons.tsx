@@ -18,10 +18,6 @@ function SocialConnectIcons({ label = 'Se connecter avec :' }: SocialConnectIcon
     window.location.href = `${API_URL}/auth/google`;
   };
 
-  const handleFacebookLogin = () => {
-    window.location.href = `${API_URL}/auth/facebook`;
-  };
-
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-gray-500 text-sm">{label}</p>
@@ -40,7 +36,7 @@ function SocialConnectIcons({ label = 'Se connecter avec :' }: SocialConnectIcon
           name="Facebook"
           isHovered={hoveredIcon === 'facebook'}
           onHover={(hovered) => setHoveredIcon(hovered ? 'facebook' : null)}
-          onClick={handleFacebookLogin}
+          disabled
         />
         <SocialButton
           icon={appleIcon}
@@ -48,6 +44,7 @@ function SocialConnectIcons({ label = 'Se connecter avec :' }: SocialConnectIcon
           name="Apple"
           isHovered={hoveredIcon === 'apple'}
           onHover={(hovered) => setHoveredIcon(hovered ? 'apple' : null)}
+          disabled
         />
       </div>
     </div>

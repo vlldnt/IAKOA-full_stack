@@ -6,7 +6,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
-// import { FacebookStrategy } from './strategies/facebook.strategy'; // Décommenter quand configuré
+import { FacebookStrategy } from './strategies/facebook.strategy';
 import { UsersModule } from '../users/users.module';
 import { PrismaModule } from '../prisma/prisma.module';
 
@@ -28,7 +28,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     JwtStrategy,
     JwtRefreshStrategy,
     GoogleStrategy,
-    // FacebookStrategy, // Décommenter quand vous aurez les clés Facebook
+    FacebookStrategy,
   ],
   exports: [AuthService, JwtModule],
 })
