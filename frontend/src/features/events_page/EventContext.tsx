@@ -76,14 +76,17 @@ export function EventProvider({ children }: { children: ReactNode }) {
     try {
       // Vérifier si les données sont déjà prefetchées
       let response;
+      let isFromPrefetch = false;
       if (prefetchedPage === page && prefetchedData.length > 0) {
         // Utiliser les données prefetchées
         response = prefetchedData;
+        isFromPrefetch = true;
         setPrefetchedPage(null);
         setPrefetchedData([]);
       } else {
         // Charger les données normalement
         response = await eventsService.fetchEventsPaginated(page, limit);
+        isFromPrefetch = false;
       }
 
       // Attendre au moins 0.5 secondes pour montrer le loader
@@ -93,7 +96,11 @@ export function EventProvider({ children }: { children: ReactNode }) {
       }
 
       // Gérer les deux formats: tableau direct ou objet paginé
-      if (Array.isArray(response)) {
+      if (isFromPrefetch) {
+        // Les données prefetchées sont déjà slicées et prêtes à utiliser
+        const prefetchedEvents = response as EventType[];
+        setEvents((prevEvents) => [...prevEvents, ...prefetchedEvents]);
+      } else if (Array.isArray(response)) {
         const start = (page - 1) * limit;
         const slicedEvents = response.slice(start, start + limit);
         setEvents((prevEvents) => [...prevEvents, ...slicedEvents]);
@@ -115,7 +122,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   // Prefetch la page suivante en arrière-plan
   const prefetchNextPage = async (nextPage: number, limit: number = 12) => {
-    if (nextPage > totalPages) return; // Ne pas prefetch au-delà du total
+    // Ne prefetch QUE si pas déjà prefetchée et si pas au-delà du total
+    if (nextPage > totalPages || prefetchedPage === nextPage) return;
 
     try {
       const response = await eventsService.fetchEventsPaginated(nextPage, limit);
