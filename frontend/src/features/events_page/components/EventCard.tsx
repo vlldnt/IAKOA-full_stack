@@ -1,7 +1,7 @@
 import { Calendar, Euro, Clock } from 'lucide-react';
 import { useState } from 'react';
 import type { EventType } from '@/lib/types/EventType';
-import { getCategoryLabel, getCategoryHexColor } from '@/lib/constants/event-category.config';
+import { getCategoryLabel, getCategoryHexColor, getCategoryShadowColor } from '@/lib/constants/event-category.config';
 
 interface EventCardProps {
   event: EventType;
@@ -17,7 +17,6 @@ function getRemainingTime(dateString: string) {
   const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30));
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
   if (months > 0) return `${months} mois`;
   if (days > 0) return `${days}j ${hours}h`;
@@ -47,12 +46,21 @@ export function EventCard({ event }: EventCardProps) {
   const imageUrl =
     event.media[0]?.url || `https://picsum.photos/400?random=${event.id}`;
 
+  // Couleur de l'ombre basée sur la première catégorie
+  const firstCategory = event.categories[0];
+  const shadowColor = getCategoryShadowColor(firstCategory);
+
   return (
     <div
       className={`card w-full max-w-full sm:max-w-none md:max-w-sm lg:max-w-sm 2xl:max-w-110 max-h-110 px-1 sm:px-0 transition-all duration-300 cursor-pointer bg-white/85 flex flex-col ${
         isActive ? 'shadow-2xl scale-105' : 'hover:shadow-2xl hover:scale-105'
       }`}
-      onClick={() => setIsActive(!isActive)}
+      style={{
+        boxShadow: isActive
+          ? `0 5px 7px ${shadowColor}`
+          : '0 5px 7px rgba(0, 0, 0, 0.1)',
+      }}
+      onMouseOver={() => setIsActive(true)}
       onMouseLeave={() => setIsActive(false)}
     >
       <figure className="h-60 overflow-hidden">

@@ -37,7 +37,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
   return (
     <div className="w-full min-h-screen bg-white pt-20 md:pt-8 pb-8 md:pb-8">
-      <div ref={contentRef} className="w-full lg:w-[90%] xl:w-[80%] mx-auto">
+      <div ref={contentRef} className="w-full lg:w-[95%] xl:w-[80%] mx-auto">
         {showCards ? (
           <div className="w-full">
             {isLoading && (
@@ -60,7 +60,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
             {!isLoading && !error && events.length > 0 && (
               <div
-                className="grid gap-6 w-full p-1
+                className="grid gap-6 w-full p-3
                            grid-cols-1
                            sm:grid-cols-2
                            lg:grid-cols-3
