@@ -1,4 +1,4 @@
-import { Calendar, DollarSign, Clock } from 'lucide-react';
+import { Calendar, Euro, Clock } from 'lucide-react';
 import { useState } from 'react';
 import type { EventType } from '@/lib/types/EventType';
 
@@ -15,14 +15,10 @@ function getRemainingTime(dateString: string) {
 
   const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30));
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(
-    (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-  );
-  const minutes = Math.floor(
-    (diff % (1000 * 60 * 60)) / (1000 * 60)
-  );
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-  if (months > 0) return `${months} mois`
+  if (months > 0) return `${months} mois`;
   if (days > 0) return `${days}j ${hours}h`;
   if (hours > 0) return `${hours}h`;
   return `Aujourd'hui`;
@@ -47,7 +43,8 @@ export function EventCard({ event }: EventCardProps) {
   const priceText =
     event.pricing === 0 ? 'Gratuit' : `À partir de ${event.pricing / 100}€`;
 
-  const imageUrl = event.media[0]?.url || `https://picsum.photos/400?random=${event.id}`;
+  const imageUrl =
+    event.media[0]?.url || `https://picsum.photos/400?random=${event.id}`;
 
   return (
     <div
@@ -79,20 +76,21 @@ export function EventCard({ event }: EventCardProps) {
         </div>
 
         {/* Infos */}
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center gap-2">
-            <Clock size={14} className="shrink-0" />
-            <span>{remainingTime}</span>
+        <div className="flex items-end justify-between gap-2">
+          <div className="space-y-1 text-xs flex-1">
+            <div className="flex items-center gap-2">
+              <Calendar size={14} className="shrink-0" />
+              <span>{formattedDate}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="shrink-0" />
+              <span>{remainingTime}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Calendar size={14} className="shrink-0" />
-            <span>{formattedDate}</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <DollarSign size={14} className="shrink-0" />
-            <span>{priceText}</span>
+          <div className="flex items-center gap-1 whitespace-nowrap shrink-0">
+            <Euro size={14} />
+            <span className="text-xs font-semibold">{priceText}</span>
           </div>
         </div>
       </div>

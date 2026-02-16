@@ -60,12 +60,12 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
             {!isLoading && !error && events.length > 0 && (
               <div
-                className="grid gap-6 w-full
+                className="grid gap-6 w-full p-1
                            grid-cols-1
                            sm:grid-cols-2
                            lg:grid-cols-3
-                           xl:grid-cols-4
-                           place-items-center lg:place-items-start"
+                           2xl:grid-cols-4
+                           place-items-center"
               >
                 {events.map((event) => (
                   <EventCard key={event.id} event={event} />
