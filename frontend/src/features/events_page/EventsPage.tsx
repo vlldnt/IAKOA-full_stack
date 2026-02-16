@@ -37,7 +37,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
   return (
     <div className="w-full min-h-screen bg-white pt-20 md:pt-8 pb-8 md:pb-8">
-      <div ref={contentRef} className="w-full lg:w-[90%] xl:w-[70%] mx-auto">
+      <div ref={contentRef} className="w-full lg:w-[90%] xl:w-[80%] mx-auto">
         {showCards ? (
           <div className="w-full">
             {isLoading && (

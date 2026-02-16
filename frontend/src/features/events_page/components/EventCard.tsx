@@ -48,7 +48,7 @@ export function EventCard({ event }: EventCardProps) {
 
   return (
     <div
-      className={`card w-full max-w-85 h-80 transition-all duration-300 cursor-pointer bg-white/85 flex flex-col ${
+      className={`card w-full max-w-full sm:max-w-none md:max-w-sm lg:max-w-sm 2xl:max-w-110 max-h-110 px-1 sm:px-0 transition-all duration-300 cursor-pointer bg-white/85 flex flex-col ${
         isActive ? 'shadow-2xl scale-105' : 'hover:shadow-2xl hover:scale-105'
       }`}
       onClick={() => setIsActive(!isActive)}
