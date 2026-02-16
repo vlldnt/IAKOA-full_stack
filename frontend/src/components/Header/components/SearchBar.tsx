@@ -21,7 +21,7 @@ export function SearchBars() {
   };
 
   return (
-    <div className="flex items-center bg-gray-100 rounded-full px-2 py-1 gap-2 w-full lg:w-auto">
+    <div className="flex items-center bg-gray-100 rounded-full px-2 py-1 gap-2 w-full md:max-w-2xl lg:max-w-3xl">
       {/* Icône recherche */}
       <Search className="h-4 w-4 opacity-50 shrink-0" />
 

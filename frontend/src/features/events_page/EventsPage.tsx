@@ -36,8 +36,8 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
   }, []);
 
   return (
-    <div className="w-full min-h-screen bg-white pt-20 md:pt-8 pb-8 md:pb-8">
-      <div ref={contentRef} className="w-full lg:w-[95%] xl:w-[80%] mx-auto">
+    <div className="w-full min-h-screen bg-white pt-30 md:pt-4 pb-8 md:pb-8">
+      <div ref={contentRef} className="w-full lg:w-[95%] xl:w-[90%] [@media(min-width:1828px)]:w-[80%] mx-auto">
         {showCards ? (
           <div className="w-full">
             {isLoading && (
@@ -64,7 +64,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
                            grid-cols-1
                            sm:grid-cols-2
                            lg:grid-cols-3
-                           2xl:grid-cols-4
+                           [@media(min-width:1828px)]:grid-cols-4
                            place-items-center"
               >
                 {events.map((event) => (

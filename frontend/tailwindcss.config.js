@@ -11,6 +11,9 @@ module.exports = {
       colors: {
         'iakoa-blue': '#2397FF',
       },
+      screens: {
+        '2k': '1728px',
+      },
     },
   },
   plugins: [],

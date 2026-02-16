@@ -1,5 +1,5 @@
 import { Calendar, Euro, Clock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { EventType } from '@/lib/types/EventType';
 import { getCategoryLabel, getCategoryHexColor, getCategoryShadowColor } from '@/lib/constants/event-category.config';
 
@@ -26,6 +26,18 @@ function getRemainingTime(dateString: string) {
 
 export function EventCard({ event }: EventCardProps) {
   const [isActive, setIsActive] = useState(false);
+  const [titleLines, setTitleLines] = useState(1);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (titleRef.current) {
+      // Calculer le nombre de lignes du titre
+      const scrollHeight = titleRef.current.scrollHeight;
+      const lineHeight = parseInt(window.getComputedStyle(titleRef.current).lineHeight);
+      const lines = Math.ceil(scrollHeight / lineHeight);
+      setTitleLines(lines);
+    }
+  }, [event.name]);
 
   const dateObj = new Date(event.date);
   const dayName = dateObj
@@ -63,7 +75,9 @@ export function EventCard({ event }: EventCardProps) {
       onMouseOver={() => setIsActive(true)}
       onMouseLeave={() => setIsActive(false)}
     >
-      <figure className="h-60 overflow-hidden">
+      <figure className={`overflow-hidden transition-all duration-200 ${
+        titleLines > 1 ? 'h-48' : 'h-60'
+      }`}>
         <img
           src={imageUrl}
           alt={event.name}
@@ -74,7 +88,7 @@ export function EventCard({ event }: EventCardProps) {
       <div className="card-body p-4 gap-2 flex-1 flex flex-col justify-between">
         {/* Titre + Catégories */}
         <div className="space-y-1">
-          <h2 className="card-title text-base line-clamp-2">{event.name}</h2>
+          <h2 ref={titleRef} className="card-title text-base line-clamp-2">{event.name}</h2>
           <div className="flex flex-wrap gap-1">
             {event.categories.map((category) => {
               const hexColor = getCategoryHexColor(category);

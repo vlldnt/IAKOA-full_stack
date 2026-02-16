@@ -6,9 +6,10 @@ import type { UserType } from '@/lib/types/AuthType';
 interface ProfileDropdownProps {
   user: UserType;
   onLogout: () => void;
+  isMobile?: boolean;
 }
 
-function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
+function ProfileDropdown({ user, onLogout, isMobile = false }: ProfileDropdownProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +42,7 @@ function ProfileDropdown({ user, onLogout }: ProfileDropdownProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+        <div className={`absolute ${isMobile ? 'bottom-full mb-2' : 'right-0 top-12'} w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50`}>
           <Link
             to="/profile"
             onClick={() => setOpen(false)}

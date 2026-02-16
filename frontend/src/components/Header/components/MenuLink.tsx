@@ -20,7 +20,7 @@ function MenuLink({ page, link, onClick, variant = 'default', icon: Icon }: Menu
 
   const content = (
     <>
-      <Icon className="h-4 w-4 md:h-5 mg:w-5" />
+      <Icon className="lg: h-6h-5 w-5 md:h-5 md:w-5" />
       <span className="text-xs">{page}</span>
     </>
   );
