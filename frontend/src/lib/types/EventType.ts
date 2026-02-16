@@ -35,7 +35,10 @@ export interface EventContextType {
   selectedEvent: EventType | null;
   isLoading: boolean;
   error: string | null;
+  totalPages: number;
   fetchEvents: () => Promise<void>;
+  fetchEventsPaginated: (page: number, limit: number) => Promise<void>;
+  fetchMoreEvents: (page: number, limit: number) => Promise<void>;
   selectEvent: (id: string) => Promise<void>;
   createEvent: (event: Omit<EventType, "id">) => Promise<EventType>;
   updateEvent: (id: string, event: Partial<EventType>) => Promise<EventType>;

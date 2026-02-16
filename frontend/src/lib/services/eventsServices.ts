@@ -4,10 +4,47 @@ import * as tokenService from "./tokenService";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
+// Interface pour la réponse paginée
+export interface PaginatedEventsResponse {
+  data: EventType[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // Récupère tous les événements publics
 export async function fetchAllEvents(): Promise<EventType[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/events`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch events: ${res.statusText}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Récupère les événements avec pagination
+export async function fetchEventsPaginated(
+  page: number = 1,
+  limit: number = 12,
+): Promise<PaginatedEventsResponse> {
+  try {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+
+    const res = await fetch(`${API_BASE_URL}/events?${params}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

@@ -31,7 +31,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
           {/* Colonne gauche - Logo (30%) */}
           <div className="lg:flex lg:w-[30%] items-center">
             <Link to="/">
-              <img src={iakoaLogo} alt="Logo IAKOA" className="max-w-30 lg:max-w-55" />
+              <img src={iakoaLogo} alt="Logo IAKOA" className="w-30 lg:w-55" />
             </Link>
           </div>
 
@@ -41,7 +41,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
           </div>
 
           {/* Colonne droite - Menu classique (30%) */}
-          <div className="hidden lg:flex lg:w-[30%] items-center justify-end gap-2">
+          <div className="hidden lg:flex lg:w-[30%] items-center justify-end gap-2 lg:gap-7">
             <ul className="flex gap-1 rounded-lg">
               <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
               <MenuLink page="Carte" link="/map" icon={MapPin} />

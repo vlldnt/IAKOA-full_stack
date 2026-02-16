@@ -13,14 +13,14 @@ type MenuLinkProps = {
 // Peut être un lien (navigation) ou un bouton (action)
 function MenuLink({ page, link, onClick, variant = 'default', icon: Icon }: MenuLinkProps) {
   
-  const baseClass = 'flex flex-col items-center gap-1 px-3 py-2 rounded-lg cursor-pointer transition-colors';
+  const baseClass = 'flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-colors';
   const variantClass = variant === 'danger'
     ? 'text-red-500 font-bold hover:bg-red-100'
     : 'hover:bg-gray-100';
 
   const content = (
     <>
-      <Icon className="lg: h-6h-5 w-5 md:h-5 md:w-5" />
+      <Icon className="h-6 w-6 md:h-8 md:w-8" />
       <span className="text-xs">{page}</span>
     </>
   );
