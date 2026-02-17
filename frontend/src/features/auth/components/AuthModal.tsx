@@ -65,22 +65,80 @@ export function AuthModal() {
             </div>
 
             {/* Colonne droite - Image et titre */}
-            <div className="hidden md:flex flex-1 bg-gray-50 flex-col justify-center items-center p-8">
+            <div className="hidden md:flex flex-1 bg-linear-to-br from-gray-50 to-gray-100 flex-col justify-center items-center p-8">
               <img className="max-w-60 m-8" src={iakoaLogo} alt="" />
-              <h2 className="text-3xl font-semibold text-gray-700 mb-2">
-                {isLogin ? 'Bon retour !' : 'Bienvenue sur IAKOA'}
-              </h2>
-              <p className="text-gray-500 mb-6">
-                {isLogin
-                  ? 'Connectez-vous pour accéder à votre compte.'
-                  : 'Remplissez les informations pour vous inscrire.'}
-              </p>
-              <div className="w-full max-w-s">
+
+              {/* Titre avec transition fluide */}
+              <div className="relative h-16 flex items-center justify-center overflow-hidden mb-2">
+                <div
+                  className="absolute transition-all duration-500 ease-in-out"
+                  style={{
+                    opacity: isLogin ? 1 : 0,
+                    transform: isLogin ? 'translateY(0)' : 'translateY(20px)',
+                  }}
+                >
+                  <h2 className="text-3xl font-semibold text-gray-700 whitespace-nowrap">
+                    Bon retour !
+                  </h2>
+                </div>
+                <div
+                  className="absolute transition-all duration-500 ease-in-out"
+                  style={{
+                    opacity: !isLogin ? 1 : 0,
+                    transform: !isLogin ? 'translateY(0)' : 'translateY(-20px)',
+                  }}
+                >
+                  <h2 className="text-3xl font-semibold text-gray-700 whitespace-nowrap">
+                    Bienvenue sur IAKOA
+                  </h2>
+                </div>
+              </div>
+
+              {/* Texte descriptif avec transition fluide */}
+              <div className="relative h-12 flex items-center justify-center overflow-hidden mb-6">
+                <div
+                  className="absolute transition-all duration-500 ease-in-out"
+                  style={{
+                    opacity: isLogin ? 1 : 0,
+                    transform: isLogin ? 'translateY(0)' : 'translateY(20px)',
+                  }}
+                >
+                  <p className="text-gray-500 text-center">
+                    Connectez-vous pour accéder à votre compte.
+                  </p>
+                </div>
+                <div
+                  className="absolute transition-all duration-500 ease-in-out"
+                  style={{
+                    opacity: !isLogin ? 1 : 0,
+                    transform: !isLogin ? 'translateY(0)' : 'translateY(-20px)',
+                  }}
+                >
+                  <p className="text-gray-500 text-center">
+                    Remplissez les informations pour vous inscrire.
+                  </p>
+                </div>
+              </div>
+
+              {/* Image avec transition fluide */}
+              <div className="w-full max-w-sm relative h-64 overflow-hidden rounded-2xl">
                 <img
-                  src={isLogin ? login : happy}
-                  alt="Bienvenue"
-                  className="w-full h-64 object-cover rounded-2xl shadow-lg transition-opacity duration-500 ease-in-out"
-                  key={isLogin ? 'login' : 'register'}
+                  src={login}
+                  alt="Connexion"
+                  className="absolute w-full h-full object-cover rounded-2xl shadow-lg transition-all duration-500 ease-in-out"
+                  style={{
+                    opacity: isLogin ? 1 : 0,
+                    transform: isLogin ? 'scale(1)' : 'scale(1.05)',
+                  }}
+                />
+                <img
+                  src={happy}
+                  alt="Inscription"
+                  className="absolute w-full h-full object-cover rounded-2xl shadow-lg transition-all duration-500 ease-in-out"
+                  style={{
+                    opacity: !isLogin ? 1 : 0,
+                    transform: !isLogin ? 'scale(1)' : 'scale(1.05)',
+                  }}
                 />
               </div>
             </div>

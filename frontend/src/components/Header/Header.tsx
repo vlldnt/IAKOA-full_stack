@@ -51,10 +51,10 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
             ) : (
               <button
                 onClick={openAuthModal}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-iakoa-blue text-white hover:opacity-90 transition-opacity cursor-pointer"
+                className="flex flex-col lg:flex-col items-center gap-1 lg:gap-2 px-3 lg:px-2 py-2 lg:py-3 rounded-lg text-iakoa-blue hover:opacity-90 transition-opacity cursor-pointer"
               >
-                <LogIn className="h-5 w-5" />
-                <span className="text-sm font-medium">Se connecter</span>
+                <LogIn className="h-7 w-7" />
+                <span className="text-xs lg:text-xs font-medium text-center">Se connecter</span>
               </button>
             )}
           </div>
