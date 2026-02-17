@@ -2,16 +2,31 @@
 export interface CategoryGroup {
   id: string;
   label: string;
+  image: string;
   subcategories: {
     id: string;
     label: string;
   }[];
 }
 
+// Import des images pour chaque catégorie
+import musique from '@/assets/images/musique.png';
+import sport from '@/assets/images/sport.png';
+import bienetre from '@/assets/images/bienetre.png';
+import art from '@/assets/images/art.png';
+import jeux from '@/assets/images/jeux.png';
+import gastronomie from '@/assets/images/gastronomie.png';
+import festival from '@/assets/images/festival.png';
+import formation from '@/assets/images/formation.png';
+import decouverte from '@/assets/images/decouverte.png';
+import marche from '@/assets/images/marche.png';
+import ecologie from '@/assets/images/ecologie.png';
+
 export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'music_spectacle',
     label: 'Musique & Spectacle',
+    image: musique,
     subcategories: [
       { id: 'CONCERT', label: 'Concert' },
       { id: 'THEATRE', label: 'Théâtre' },
@@ -23,6 +38,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'sport_aventure',
     label: 'Sport & Aventure',
+    image: sport,
     subcategories: [
       { id: 'TRAIL', label: 'Trail' },
       { id: 'SPORT', label: 'Sport' },
@@ -34,6 +50,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'wellness',
     label: 'Bien-être & Santé',
+    image: bienetre,
     subcategories: [
       { id: 'YOGA', label: 'Yoga' },
       { id: 'MEDITATION', label: 'Méditation' },
@@ -44,6 +61,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'art_culture',
     label: 'Art & Culture',
+    image: art,
     subcategories: [
       { id: 'ART', label: 'Art' },
       { id: 'PEINTURE', label: 'Peinture' },
@@ -56,6 +74,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'games_leisure',
     label: 'Jeux & Loisirs',
+    image: jeux,
     subcategories: [
       { id: 'JEUX', label: 'Jeux' },
       { id: 'JEUXVIDEO', label: 'Jeux vidéo' },
@@ -67,6 +86,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'gastronomy',
     label: 'Gastronomie',
+    image: gastronomie,
     subcategories: [
       { id: 'REPAS', label: 'Repas' },
       { id: 'DEJEUNER', label: 'Déjeuner' },
@@ -78,6 +98,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'events_festivals',
     label: 'Événements & Festivals',
+    image: festival,
     subcategories: [
       { id: 'FESTIVAL', label: 'Festival' },
       { id: 'FETELOCALE', label: 'Fête locale' },
@@ -89,6 +110,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'learning_conference',
     label: 'Formation & Conférences',
+    image: formation,
     subcategories: [
       { id: 'CONFERENCE', label: 'Conférence' },
       { id: 'FORMATION', label: 'Formation' },
@@ -99,6 +121,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'discovery_heritage',
     label: 'Découverte & Patrimoine',
+    image: decouverte,
     subcategories: [
       { id: 'DECOUVERTE', label: 'Découverte' },
       { id: 'PATRIMOINE', label: 'Patrimoine' },
@@ -109,6 +132,7 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {
     id: 'market_commerce',
     label: 'Marché & Commerce',
+    image: marche,
     subcategories: [
       { id: 'MARCHE', label: 'Marche' },
       { id: 'BROCANTE', label: 'Brocante' },
@@ -118,7 +142,8 @@ export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   },
   {
     id: 'social_causes',
-    label: 'Causes Sociales',
+    label: 'Causes Sociales & Écologie',
+    image: ecologie,
     subcategories: [
       { id: 'ANIMAUX', label: 'Animaux' },
       { id: 'BENEVOLAT', label: 'Bénévolat' },

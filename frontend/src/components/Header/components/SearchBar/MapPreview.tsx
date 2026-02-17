@@ -19,9 +19,21 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+// Calculer le zoom adapté au rayon pour voir le cercle complet
+function calculateZoomForRadius(radius: number): number {
+  if (radius <= 1) return 14;
+  if (radius <= 2) return 13;
+  if (radius <= 5) return 12;
+  if (radius <= 10) return 11;
+  if (radius <= 25) return 9;
+  if (radius <= 50) return 8;
+  return 7;
+}
+
 export function MapPreview({ radius }: MapPreviewProps) {
   const [position, setPosition] = useState<[number, number]>([48.8566, 2.3522]); // Paris par défaut
   const [isLoading, setIsLoading] = useState(true);
+  const zoom = calculateZoomForRadius(radius);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -42,23 +54,24 @@ export function MapPreview({ radius }: MapPreviewProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+      <div className="w-96 h-96 bg-gray-200 rounded-lg flex items-center justify-center">
         <span className="text-gray-600">Chargement de la carte...</span>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-48 rounded-lg overflow-hidden shadow-md border border-gray-200">
+    <div className="w-96 h-96 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto">
       <MapContainer
         center={position}
-        zoom={13}
+        zoom={zoom}
         style={{ width: '100%', height: '100%' }}
         dragging={false}
         zoomControl={false}
         scrollWheelZoom={false}
         doubleClickZoom={false}
         touchZoom={false}
+        key={`${position[0]}-${position[1]}-${zoom}`}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
