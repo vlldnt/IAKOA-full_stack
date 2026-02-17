@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import MenuLink from "./components/MenuLink";
 import { IakoaIcon } from "./components/IakoaIcon";
 import { useAuth } from "@/features/auth/AuthContext";
-import { SearchBars } from "./components/SearchBar";
+import { SearchBars } from "./components/SearchBar/SearchBar";
 import { LogIn, MapPin } from "lucide-react";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
@@ -42,7 +42,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
 
           {/* Colonne droite - Menu classique (30%) */}
           <div className="hidden lg:flex lg:w-[30%] items-center justify-end gap-2 lg:gap-7">
-            <ul className="flex gap-1 rounded-lg">
+            <ul className="flex gap-2 rounded-lg">
               <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
               <MenuLink page="Carte" link="/map" icon={MapPin} />
             </ul>
@@ -51,7 +51,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
             ) : (
               <button
                 onClick={openAuthModal}
-                className="flex flex-col lg:flex-col items-center gap-1 lg:gap-2 px-3 lg:px-2 py-2 lg:py-3 rounded-lg text-iakoa-blue hover:opacity-90 transition-opacity cursor-pointer"
+                className="flex flex-col lg:flex-col items-center gap-2 lg:gap-2 px-3 lg:px-2 py-2 lg:py-3 rounded-lg text-iakoa-blue hover:opacity-90 transition-opacity cursor-pointer"
               >
                 <LogIn className="h-7 w-7" />
                 <span className="text-xs lg:text-xs font-medium text-center">Se connecter</span>
