@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import type { EventType, EventContextType } from "../../lib/types/EventType";
 import * as eventsService from "@/lib/services/eventsServices";
+import type { EventFilterParams } from "@/lib/services/eventsServices";
 
 const EventContext = createContext<EventContextType | null>(null);
 
@@ -42,6 +43,39 @@ export function EventProvider({ children }: { children: ReactNode }) {
     const startTime = Date.now();
     try {
       const response = await eventsService.fetchEventsPaginated(page, limit);
+
+      // Attendre au moins 0.5 secondes pour montrer le loader
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 500) {
+        await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+      }
+
+      // Gérer les deux formats: tableau direct ou objet paginé
+      if (Array.isArray(response)) {
+        setEvents(response.slice(0, limit));
+        setTotalPages(Math.ceil(response.length / limit));
+      } else {
+        setEvents(response.data || []);
+        setTotalPages(response.totalPages || 1);
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erreur lors du chargement des événements";
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Récupère les événements avec filtres
+  const fetchFilteredEvents = async (page: number = 1, limit: number = 12, filters?: EventFilterParams) => {
+    setIsLoading(true);
+    setError(null);
+    const startTime = Date.now();
+    try {
+      const response = await eventsService.fetchEventsPaginated(page, limit, filters);
 
       // Attendre au moins 0.5 secondes pour montrer le loader
       const elapsed = Date.now() - startTime;
@@ -260,6 +294,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
         updateEvent,
         deleteEvent,
         prefetchNextPage,
+        fetchFilteredEvents,
       }}
     >
       {children}

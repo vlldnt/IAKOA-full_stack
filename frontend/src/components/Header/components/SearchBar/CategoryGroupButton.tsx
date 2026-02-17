@@ -3,15 +3,11 @@ import type { CategoryGroup } from '@/lib/constants/filter-categories';
 
 // Discrete colors for each category group
 const CATEGORY_GROUP_COLORS: Record<string, { bg: string; text: string }> = {
-  music_spectacle: { bg: 'bg-red-50', text: 'text-red-700' },
-  sport_aventure: { bg: 'bg-orange-50', text: 'text-orange-700' },
-  wellness: { bg: 'bg-green-50', text: 'text-green-700' },
-  art_culture: { bg: 'bg-purple-50', text: 'text-purple-700' },
-  games_leisure: { bg: 'bg-cyan-50', text: 'text-cyan-700' },
+  arts_culture: { bg: 'bg-purple-50', text: 'text-purple-700' },
+  sports_wellness: { bg: 'bg-orange-50', text: 'text-orange-700' },
+  leisure_entertainment: { bg: 'bg-cyan-50', text: 'text-cyan-700' },
   gastronomy: { bg: 'bg-amber-50', text: 'text-amber-700' },
-  events_festivals: { bg: 'bg-blue-50', text: 'text-blue-700' },
-  learning_conference: { bg: 'bg-slate-50', text: 'text-slate-700' },
-  discovery_heritage: { bg: 'bg-indigo-50', text: 'text-indigo-700' },
+  learning_discovery: { bg: 'bg-indigo-50', text: 'text-indigo-700' },
   market_commerce: { bg: 'bg-yellow-50', text: 'text-yellow-700' },
   social_causes: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
 };
@@ -67,7 +63,7 @@ export function CategoryGroupButton({
           backgroundImage: `url(${group.image})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          minHeight: '85px',
+          minHeight: '65px',
         }}
       >
         {/* Dark overlay pour meilleure lisibilité du texte */}

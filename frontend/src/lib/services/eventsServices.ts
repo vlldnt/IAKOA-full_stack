@@ -33,16 +33,49 @@ export async function fetchAllEvents(): Promise<EventType[]> {
   }
 }
 
-// Récupère les événements avec pagination
+// Interface pour les paramètres de filtrage
+export interface EventFilterParams {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  radius?: number;
+  categories?: string[];
+}
+
+// Récupère les événements avec pagination et filtres
 export async function fetchEventsPaginated(
   page: number = 1,
   limit: number = 12,
+  filters?: EventFilterParams,
 ): Promise<PaginatedEventsResponse> {
   try {
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
     });
+
+    // Ajouter les paramètres de filtrage s'ils existent
+    if (filters?.keyword) {
+      params.append("keyword", filters.keyword);
+    }
+    if (filters?.city) {
+      params.append("city", filters.city);
+    }
+    if (filters?.latitude !== undefined) {
+      params.append("latitude", String(filters.latitude));
+    }
+    if (filters?.longitude !== undefined) {
+      params.append("longitude", String(filters.longitude));
+    }
+    if (filters?.radius !== undefined) {
+      params.append("radius", String(filters.radius));
+    }
+    if (filters?.categories && filters.categories.length > 0) {
+      params.append("categories", filters.categories.join(","));
+    }
 
     const res = await fetch(`${API_BASE_URL}/events?${params}`, {
       method: "GET",

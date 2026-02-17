@@ -1,6 +1,7 @@
 import { EventCard } from './components/EventCard';
 import { useRef, useEffect, useState } from 'react';
 import { useEvents } from './EventContext';
+import { useFilters } from './FilterContext';
 
 interface EventsPageProps {
   text?: string;
@@ -12,7 +13,8 @@ interface EventsPageProps {
 function EventsPage({ text, showCards = true }: EventsPageProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { events = [], isLoading = false, error = null, fetchEventsPaginated, fetchMoreEvents, prefetchNextPage, totalPages = 1 } = useEvents();
+  const { events = [], isLoading = false, error = null, fetchEventsPaginated, fetchMoreEvents, prefetchNextPage, totalPages = 1, fetchFilteredEvents } = useEvents();
+  const { filters, updatePosition } = useFilters();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -33,15 +35,40 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     return () => window.removeEventListener('resize', calculateMargin);
   }, []);
 
-  // Fetch events au montage du composant et prefetch page 2
+  // Initialiser la position de l'utilisateur si pas déjà fait
   useEffect(() => {
-    if (fetchEventsPaginated) {
-      fetchEventsPaginated(1, itemsPerPage).then(() => {
-        // Prefetch page 2 après le chargement de page 1
-        prefetchNextPage(2, itemsPerPage);
-      });
+    if (!filters.latitude && !filters.longitude && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          updatePosition(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          // Silencieusement échouer - utiliser une position par défaut
+          updatePosition(44.3497, 2.5737); // Rodez comme défaut
+        }
+      );
     }
   }, []);
+
+  // Fetch events au montage du composant et prefetch page 2
+  useEffect(() => {
+    setCurrentPage(1);
+    if (filters.latitude !== undefined && filters.longitude !== undefined) {
+      if (fetchFilteredEvents) {
+        fetchFilteredEvents(1, itemsPerPage, {
+          keyword: filters.keyword,
+          city: filters.city,
+          latitude: filters.latitude,
+          longitude: filters.longitude,
+          radius: filters.radius,
+          categories: filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
+        }).then(() => {
+          // Prefetch page 2 après le chargement de page 1
+          prefetchNextPage(2, itemsPerPage);
+        });
+      }
+    }
+  }, [filters.keyword, filters.city, filters.latitude, filters.longitude, filters.radius, filters.selectedCategories]);
 
   // Infinite scroll avec Intersection Observer
   useEffect(() => {
