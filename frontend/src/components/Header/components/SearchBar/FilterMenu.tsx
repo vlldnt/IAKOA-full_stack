@@ -127,13 +127,18 @@ export function FilterMenu({
   onKeywordChange,
   onCityChange,
 }: FilterMenuProps) {
-  const { filters, updateRadius, updateCategories, updateCity: updateCityFilter, updateKeyword: updateKeywordFilter } = useFilters();
+  const { filters, updateRadius, updateCategories, updateCity: updateCityFilter, updateKeyword: updateKeywordFilter, updateDateRange, updatePrice } = useFilters();
   const [radius, setRadius] = useState(filters.radius);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(filters.selectedCategories);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [cityLat, setCityLat] = useState<number | undefined>(filters.latitude);
   const [cityLon, setCityLon] = useState<number | undefined>(filters.longitude);
+  const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
+  const [dateTo, setDateTo] = useState(filters.dateTo || '');
+  const [priceMin, setPriceMin] = useState<string>(filters.priceMin !== undefined ? String(filters.priceMin / 100) : '');
+  const [priceMax, setPriceMax] = useState<string>(filters.priceMax !== undefined ? String(filters.priceMax / 100) : '');
+  const [isFree, setIsFree] = useState(filters.isFree);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
   const hoveredGroupRef = useRef<HTMLDivElement>(null);
@@ -239,11 +244,16 @@ export function FilterMenu({
   };
 
   const handleApply = () => {
-    // Mettre à jour tous les filtres globaux d'un coup
     updateKeywordFilter(keyword);
     updateCityFilter(city, cityLat, cityLon);
     updateRadius(radius);
     updateCategories(selectedCategories);
+    updateDateRange(dateFrom || undefined, dateTo || undefined);
+    updatePrice(
+      priceMin ? Math.round(parseFloat(priceMin) * 100) : undefined,
+      priceMax ? Math.round(parseFloat(priceMax) * 100) : undefined,
+      isFree,
+    );
 
     onApply({ radius, selectedCategories });
     onClose();
@@ -252,6 +262,11 @@ export function FilterMenu({
   const handleReset = () => {
     setRadius(2);
     setSelectedCategories([]);
+    setDateFrom('');
+    setDateTo('');
+    setPriceMin('');
+    setPriceMax('');
+    setIsFree(false);
   };
 
   return (
@@ -414,6 +429,71 @@ export function FilterMenu({
                 {/* Carte - cachée en mobile/tablette */}
                 <div className="hidden lg:block">
                   <MapPreview radius={radius} userPosition={userPosition} />
+                </div>
+
+                {/* Filtre par date */}
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-gray-700">Date</span>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-gray-500">Du</label>
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-gray-500">Au</label>
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filtre par prix */}
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-gray-700">Prix</span>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isFree}
+                      onChange={(e) => setIsFree(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-iakoa-blue focus:ring-iakoa-blue"
+                    />
+                    <span className="text-sm text-gray-700">Gratuit uniquement</span>
+                  </label>
+                  {!isFree && (
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <input
+                          type="number"
+                          placeholder="Min €"
+                          min="0"
+                          step="0.01"
+                          value={priceMin}
+                          onChange={(e) => setPriceMin(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="number"
+                          placeholder="Max €"
+                          min="0"
+                          step="0.01"
+                          value={priceMax}
+                          onChange={(e) => setPriceMax(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

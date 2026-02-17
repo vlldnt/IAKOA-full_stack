@@ -8,7 +8,12 @@ export interface FilterState {
   longitude?: number;
   radius: number;
   selectedCategories: string[];
-  isReady: boolean; // True si on a au moins une position
+  dateFrom?: string;
+  dateTo?: string;
+  priceMin?: number;
+  priceMax?: number;
+  isFree: boolean;
+  isReady: boolean;
 }
 
 interface FilterContextType {
@@ -19,6 +24,8 @@ interface FilterContextType {
   updateRadius: (radius: number) => void;
   updateCategories: (categories: string[]) => void;
   updatePosition: (lat: number, lon: number) => void;
+  updateDateRange: (dateFrom?: string, dateTo?: string) => void;
+  updatePrice: (priceMin?: number, priceMax?: number, isFree?: boolean) => void;
   resetFilters: () => void;
 }
 
@@ -29,8 +36,13 @@ const DEFAULT_FILTERS: FilterState = {
   city: "",
   latitude: undefined,
   longitude: undefined,
-  radius: 5, // 5km par défaut
-  selectedCategories: [], // Vide = toutes les catégories
+  radius: 5,
+  selectedCategories: [],
+  dateFrom: undefined,
+  dateTo: undefined,
+  priceMin: undefined,
+  priceMax: undefined,
+  isFree: false,
   isReady: false,
 };
 
@@ -67,6 +79,14 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateDateRange = useCallback((dateFrom?: string, dateTo?: string) => {
+    setFilters((prev) => ({ ...prev, dateFrom, dateTo }));
+  }, []);
+
+  const updatePrice = useCallback((priceMin?: number, priceMax?: number, isFree?: boolean) => {
+    setFilters((prev) => ({ ...prev, priceMin, priceMax, isFree: isFree ?? false }));
+  }, []);
+
   const resetFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS);
   }, []);
@@ -81,6 +101,8 @@ export function FilterProvider({ children }: { children: ReactNode }) {
         updateRadius,
         updateCategories,
         updatePosition,
+        updateDateRange,
+        updatePrice,
         resetFilters,
       }}
     >

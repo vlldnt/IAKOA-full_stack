@@ -17,6 +17,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
   const [totalPages, setTotalPages] = useState(1);
   const [prefetchedPage, setPrefetchedPage] = useState<number | null>(null);
   const [prefetchedData, setPrefetchedData] = useState<EventType[]>([]);
+  const [currentFilters, setCurrentFilters] = useState<EventFilterParams | undefined>(undefined);
 
   // Récupère tous les événements publics
   const fetchEvents = async () => {
@@ -71,6 +72,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
   // Récupère les événements avec filtres
   const fetchFilteredEvents = async (page: number = 1, limit: number = 12, filters?: EventFilterParams) => {
+    setCurrentFilters(filters);
     setIsLoading(true);
     setError(null);
     const startTime = Date.now();
@@ -118,8 +120,8 @@ export function EventProvider({ children }: { children: ReactNode }) {
         setPrefetchedPage(null);
         setPrefetchedData([]);
       } else {
-        // Charger les données normalement
-        response = await eventsService.fetchEventsPaginated(page, limit);
+        // Charger les données normalement avec les filtres courants
+        response = await eventsService.fetchEventsPaginated(page, limit, currentFilters);
         isFromPrefetch = false;
       }
 
@@ -160,7 +162,7 @@ export function EventProvider({ children }: { children: ReactNode }) {
     if (nextPage > totalPages || prefetchedPage === nextPage) return;
 
     try {
-      const response = await eventsService.fetchEventsPaginated(nextPage, limit);
+      const response = await eventsService.fetchEventsPaginated(nextPage, limit, currentFilters);
 
       let data: EventType[] = [];
       if (Array.isArray(response)) {

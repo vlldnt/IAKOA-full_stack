@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -22,6 +23,7 @@ import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventResponseDto } from './dto/event-response.dto';
+import { FilterEventsDto } from './dto/filter-events.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UserResponseDto } from '../users/dto/user-response.dto';
@@ -71,11 +73,10 @@ export class EventsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Liste des événements',
-    type: [EventResponseDto],
+    description: 'Liste des événements paginée et filtrée',
   })
-  findAll() {
-    return this.eventsService.findAll();
+  findAll(@Query() filters: FilterEventsDto) {
+    return this.eventsService.findFiltered(filters);
   }
 
   /**

@@ -1,5 +1,5 @@
 import { EventCard } from './components/EventCard';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useEvents } from './EventContext';
 import { useFilters } from './FilterContext';
 
@@ -16,6 +16,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
   const { events = [], isLoading = false, error = null, fetchEventsPaginated, fetchMoreEvents, prefetchNextPage, totalPages = 1, fetchFilteredEvents } = useEvents();
   const { filters, updatePosition } = useFilters();
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
   const itemsPerPage = 12;
 
   useEffect(() => {
@@ -35,7 +36,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     return () => window.removeEventListener('resize', calculateMargin);
   }, []);
 
-  // Initialiser la position de l'utilisateur si pas déjà fait
+  // Initialiser la position de l'utilisateur en arrière-plan (sans déclencher de fetch)
   useEffect(() => {
     if (!filters.latitude && !filters.longitude && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -43,32 +44,50 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
           updatePosition(position.coords.latitude, position.coords.longitude);
         },
         () => {
-          // Silencieusement échouer - utiliser une position par défaut
-          updatePosition(44.3497, 2.5737); // Rodez comme défaut
+          updatePosition(44.3497, 2.5737);
         }
       );
     }
   }, []);
 
-  // Fetch events au montage du composant et prefetch page 2
+  // Chargement initial: événements récents sans filtre
   useEffect(() => {
-    setCurrentPage(1);
-    if (filters.latitude !== undefined && filters.longitude !== undefined) {
-      if (fetchFilteredEvents) {
-        fetchFilteredEvents(1, itemsPerPage, {
-          keyword: filters.keyword,
-          city: filters.city,
-          latitude: filters.latitude,
-          longitude: filters.longitude,
-          radius: filters.radius,
-          categories: filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
-        }).then(() => {
-          // Prefetch page 2 après le chargement de page 1
-          prefetchNextPage(2, itemsPerPage);
-        });
-      }
+    if (!hasAppliedFilters) {
+      fetchFilteredEvents(1, itemsPerPage).then(() => {
+        prefetchNextPage(2, itemsPerPage);
+      });
     }
-  }, [filters.keyword, filters.city, filters.latitude, filters.longitude, filters.radius, filters.selectedCategories]);
+  }, []);
+
+  // Quand les filtres changent (action utilisateur), fetcher avec filtres
+  const buildFilterParams = useCallback(() => ({
+    keyword: filters.keyword || undefined,
+    city: filters.city || undefined,
+    latitude: filters.latitude,
+    longitude: filters.longitude,
+    radius: filters.radius,
+    categories: filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    priceMin: filters.priceMin,
+    priceMax: filters.priceMax,
+    isFree: filters.isFree || undefined,
+  }), [filters]);
+
+  // Détecter les changements de filtres (après le premier rendu)
+  useEffect(() => {
+    const hasAnyFilter = filters.keyword || filters.city || filters.selectedCategories.length > 0
+      || filters.dateFrom || filters.dateTo || filters.priceMin !== undefined
+      || filters.priceMax !== undefined || filters.isFree;
+
+    if (hasAnyFilter || hasAppliedFilters) {
+      setHasAppliedFilters(true);
+      setCurrentPage(1);
+      fetchFilteredEvents(1, itemsPerPage, buildFilterParams()).then(() => {
+        prefetchNextPage(2, itemsPerPage);
+      });
+    }
+  }, [filters.keyword, filters.city, filters.latitude, filters.longitude, filters.radius, filters.selectedCategories, filters.dateFrom, filters.dateTo, filters.priceMin, filters.priceMax, filters.isFree]);
 
   // Infinite scroll avec Intersection Observer
   useEffect(() => {

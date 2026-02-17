@@ -8,6 +8,7 @@ import {
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventResponseDto } from './dto/event-response.dto';
+import { FilterEventsDto } from './dto/filter-events.dto';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MediaService } from 'src/media/media.service';
@@ -89,6 +90,107 @@ export class EventsService {
       orderBy: { date: 'desc' },
     });
     return events.map(event => new EventResponseDto(event));
+  }
+
+  /**
+   * Calcule la distance en km entre deux points (formule de Haversine)
+   */
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Rayon de la Terre en km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  /**
+   * Recherche filtrée avec pagination, distance, mot-clé et catégories
+   */
+  async findFiltered(filters: FilterEventsDto) {
+    const { page = 1, limit = 12, keyword, latitude, longitude, radius = 5, categories, dateFrom, dateTo, priceMin, priceMax, isFree } = filters;
+
+    // Construire le where Prisma
+    const where: Prisma.EventWhereInput = {};
+
+    // Filtre par mot-clé (nom OU description)
+    if (keyword && keyword.trim()) {
+      where.OR = [
+        { name: { contains: keyword.trim(), mode: 'insensitive' } },
+        { description: { contains: keyword.trim(), mode: 'insensitive' } },
+      ];
+    }
+
+    // Filtre par catégories
+    if (categories) {
+      const categoryList = categories.split(',').map(c => c.trim()).filter(Boolean);
+      if (categoryList.length > 0) {
+        where.categories = { hasSome: categoryList as any };
+      }
+    }
+
+    // Filtre par date
+    if (dateFrom || dateTo) {
+      where.date = {};
+      if (dateFrom) {
+        where.date.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        where.date.lte = new Date(dateTo);
+      }
+    }
+
+    // Filtre par prix
+    if (isFree) {
+      where.pricing = 0;
+    } else if (priceMin !== undefined || priceMax !== undefined) {
+      where.pricing = {};
+      if (priceMin !== undefined) {
+        where.pricing.gte = priceMin;
+      }
+      if (priceMax !== undefined) {
+        where.pricing.lte = priceMax;
+      }
+    }
+
+    // Récupérer tous les events qui matchent keyword + catégories
+    const allEvents = await this.prisma.event.findMany({
+      where,
+      include: { media: true, company: true },
+      orderBy: { date: 'desc' },
+    });
+
+    // Filtrer par distance si lat/lon fournis
+    let filteredEvents = allEvents;
+    if (latitude !== undefined && longitude !== undefined) {
+      filteredEvents = allEvents.filter(event => {
+        const location = event.location as any;
+        const eventLat = location?.coordinates?.lat;
+        const eventLng = location?.coordinates?.lng;
+        if (eventLat === undefined || eventLng === undefined) return false;
+        const distance = this.haversineDistance(latitude, longitude, eventLat, eventLng);
+        return distance <= radius;
+      });
+    }
+
+    // Pagination
+    const total = filteredEvents.length;
+    const totalPages = Math.ceil(total / limit);
+    const start = (page - 1) * limit;
+    const paginatedEvents = filteredEvents.slice(start, start + limit);
+
+    return {
+      data: paginatedEvents.map(event => new EventResponseDto(event)),
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async findAllByOwner(userId: string): Promise<EventResponseDto[]> {

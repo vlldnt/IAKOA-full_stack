@@ -43,6 +43,11 @@ export interface EventFilterParams {
   longitude?: number;
   radius?: number;
   categories?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  priceMin?: number;
+  priceMax?: number;
+  isFree?: boolean;
 }
 
 // Récupère les événements avec pagination et filtres
@@ -61,9 +66,6 @@ export async function fetchEventsPaginated(
     if (filters?.keyword) {
       params.append("keyword", filters.keyword);
     }
-    if (filters?.city) {
-      params.append("city", filters.city);
-    }
     if (filters?.latitude !== undefined) {
       params.append("latitude", String(filters.latitude));
     }
@@ -75,6 +77,21 @@ export async function fetchEventsPaginated(
     }
     if (filters?.categories && filters.categories.length > 0) {
       params.append("categories", filters.categories.join(","));
+    }
+    if (filters?.dateFrom) {
+      params.append("dateFrom", filters.dateFrom);
+    }
+    if (filters?.dateTo) {
+      params.append("dateTo", filters.dateTo);
+    }
+    if (filters?.priceMin !== undefined) {
+      params.append("priceMin", String(filters.priceMin));
+    }
+    if (filters?.priceMax !== undefined) {
+      params.append("priceMax", String(filters.priceMax));
+    }
+    if (filters?.isFree) {
+      params.append("isFree", "true");
     }
 
     const res = await fetch(`${API_BASE_URL}/events?${params}`, {
