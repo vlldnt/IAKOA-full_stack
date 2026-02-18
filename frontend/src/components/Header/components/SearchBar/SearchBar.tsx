@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, MapPin, Sliders, Loader } from 'lucide-react';
+import { Search, MapPin, Sliders, Loader, X } from 'lucide-react';
 import { FilterMenu, type FilterState } from './FilterMenu';
 import { useFilters } from '@/features/events_page/FilterContext';
 
@@ -15,7 +15,7 @@ interface CityResult {
 // Barre de recherche avec deux champs: mots-clés et ville
 // Utilise les icônes lucide-react au lieu de SVG inline
 export function SearchBars() {
-  const { filters, updateKeyword, updateCity } = useFilters();
+  const { filters, updateKeyword, updateCity, resetFilters } = useFilters();
   const [keyword, setKeyword] = useState(filters.keyword);
   const [city, setCity] = useState(filters.city);
   const [cityLat, setCityLat] = useState<number | undefined>(filters.latitude);
@@ -42,6 +42,19 @@ export function SearchBars() {
     ? (appliedFilters.selectedCategories.length > 0 ? 1 : 0) +
       (appliedFilters.radius !== 2 ? 1 : 0)
     : 0;
+
+  const hasActiveFilters = !!(keyword || city || filterCount > 0
+    || filters.dateFrom || filters.dateTo || filters.priceMin !== undefined
+    || filters.priceMax !== undefined || filters.isFree);
+
+  const handleClearAll = () => {
+    setKeyword('');
+    setCity('');
+    setCityLat(undefined);
+    setCityLon(undefined);
+    setAppliedFilters(null);
+    resetFilters();
+  };
 
   const handleSearch = () => {
     updateKeyword(keyword);
@@ -130,7 +143,7 @@ export function SearchBars() {
     <div className="w-full relative">
       <div className="flex items-center justify-center gap-2 w-full">
         {/* Barre de recherche */}
-        <div className="flex items-center bg-gray-100 rounded-full px-3 py-2 lg:px-5 lg:py-2 gap-2 flex-1 lg:flex-none lg:max-w-5xl">
+        <div className="flex items-center bg-gray-100 rounded-full px-3 py-2 lg:px-5 lg:py-2 gap-2 flex-1 max-w-[calc(100vw-6rem)] md:max-w-none lg:flex-none lg:max-w-5xl">
           {/* Icône recherche - cliquable pour ouvrir le filtre */}
           <button
             onClick={handleOpenFilters}
@@ -229,16 +242,27 @@ export function SearchBars() {
           </button>
         </div>
 
+        {/* Bouton clear filters */}
+        {hasActiveFilters && (
+          <button
+            onClick={handleClearAll}
+            className="flex items-center justify-center w-8 h-8 bg-red-400 rounded-full hover:bg-red-500 transition-all duration-200 shrink-0 text-white"
+            title="Effacer tous les filtres"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+
         {/* Bouton filtre */}
         <div className="relative">
           <button
             onClick={handleOpenFilters}
             onMouseEnter={() => setShowFilterTooltip(true)}
             onMouseLeave={() => setShowFilterTooltip(false)}
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-linear-to-br from-iakoa-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md transition-all duration-200 shrink-0 relative group"
+            className="flex items-center justify-center w-8 h-8 lg:w-11 lg:h-11 rounded-full bg-linear-to-br from-iakoa-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md transition-all duration-200 shrink-0 relative group"
             title="Filtres"
           >
-            <Sliders className="h-5 w-5 text-white" />
+            <Sliders className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
 
             {/* Badge avec nombre de filtres */}
             {filterCount > 0 && (

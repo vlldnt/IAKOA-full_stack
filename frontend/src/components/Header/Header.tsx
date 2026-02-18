@@ -5,7 +5,8 @@ import MenuLink from "./components/MenuLink";
 import { IakoaIcon } from "./components/IakoaIcon";
 import { useAuth } from "@/features/auth/AuthContext";
 import { SearchBars } from "./components/SearchBar/SearchBar";
-import { LogIn, MapPin } from "lucide-react";
+import { LogIn, MapPin, X } from "lucide-react";
+import { useFilters } from "@/features/events_page/FilterContext";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
 import login from '@/assets/images/login.png';
@@ -14,7 +15,14 @@ import happy from '@/assets/images/happy.png';
 // Header principal de l'application
 const Header = forwardRef<HTMLElement>(function Header(_, ref) {
   const { user, logout } = useAuth();
+  const { filters, resetFilters } = useFilters();
   const [isLogin, setIsLogin] = useState(true);
+
+  const hasActiveFilters = !!(filters.keyword || filters.city
+    || filters.selectedCategories.length > 0
+    || filters.dateFrom || filters.dateTo
+    || filters.priceMin !== undefined || filters.priceMax !== undefined
+    || filters.isFree);
 
   const openAuthModal = () => {
     (document.getElementById('auth_modal') as HTMLDialogElement)?.showModal();
@@ -28,11 +36,21 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
         className="fixed w-full top-0 p-3 sm:p-4 lg:p-6 shadow-md z-50 bg-white"
       >
         <div className="h-full max-w-full lg:max-w-[95%] mx-auto flex flex-col lg:flex-row gap-3 lg:gap-4 justify-center lg:justify-between items-center">
-          {/* Colonne gauche - Logo (30%) */}
-          <div className="lg:flex lg:w-[30%] items-center">
+          {/* Colonne gauche - Logo (30%) + bouton X clear filters en mobile */}
+          <div className="flex lg:w-[30%] items-center justify-center w-full">
             <Link to="/">
               <img src={iakoaLogo} alt="Logo IAKOA" className="w-30 lg:w-55" />
             </Link>
+            {/* Bouton X clear filters - mobile/tablette uniquement */}
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="flex lg:hidden items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Supprimer les filtres</span>
+              </button>
+            )}
           </div>
 
           {/* Colonne centrale - SearchBar (flexible) */}
