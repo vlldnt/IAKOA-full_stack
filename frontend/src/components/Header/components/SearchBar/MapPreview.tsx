@@ -34,22 +34,25 @@ function calculateZoomForRadius(radius: number): number {
 }
 
 export function MapPreview({ radius, userPosition }: MapPreviewProps) {
-  const [position, setPosition] = useState<[number, number]>([44.3497, 2.5737]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [position, setPosition] = useState<[number, number] | null>(null);
   const zoom = calculateZoomForRadius(radius);
 
   useEffect(() => {
-    // Si une position utilisateur est fournie, l'utiliser
     if (userPosition) {
       setPosition(userPosition);
-      setIsLoading(false);
+    } else {
+      setPosition(null);
     }
   }, [userPosition]);
 
-  if (isLoading) {
+  if (!position) {
     return (
-      <div className="w-90 h-90 bg-gray-200 rounded-lg lg:flex items-center justify-center">
-        <span className="text-gray-600">Chargement de la carte...</span>
+      <div className="w-90 h-90 bg-gray-100 rounded-lg border border-gray-200 flex flex-col items-center justify-center gap-2 mx-auto">
+        <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span className="text-sm text-gray-400 text-center px-4">Pas de localisation sélectionnée</span>
       </div>
     );
   }

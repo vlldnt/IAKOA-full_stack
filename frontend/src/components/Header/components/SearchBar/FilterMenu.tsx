@@ -185,6 +185,7 @@ export function FilterMenu({
   );
   const [isFree, setIsFree] = useState(filters.isFree);
   const [activeDatePreset, setActiveDatePreset] = useState<'today' | 'week' | 'weekend' | null>(null);
+  const [cityError, setCityError] = useState(false);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
   const [cityFocused, setCityFocused] = useState(false);
@@ -199,6 +200,17 @@ export function FilterMenu({
     setRadius(filters.radius);
     setSelectedCategories(filters.selectedCategories);
   }, [filters.radius, filters.selectedCategories]);
+
+  // Synchroniser la position GPS quand la ville change depuis la SearchBar principale
+  useEffect(() => {
+    if (filters.latitude && filters.longitude) {
+      setCityLat(filters.latitude);
+      setCityLon(filters.longitude);
+      setUserPosition([filters.latitude, filters.longitude]);
+    } else {
+      setUserPosition(null);
+    }
+  }, [filters.latitude, filters.longitude]);
 
   const handleGeolocation = () => {
     if (!navigator.geolocation) {
@@ -299,6 +311,11 @@ export function FilterMenu({
   };
 
   const handleApply = () => {
+    if (!city) {
+      setCityError(true);
+      return;
+    }
+    setCityError(false);
     updateKeywordFilter(keyword);
     updateCityFilter(city, cityLat, cityLon);
     updateRadius(radius);
@@ -323,6 +340,7 @@ export function FilterMenu({
     setPriceMax('');
     setIsFree(false);
     setActiveDatePreset(null);
+    setCityError(false);
   };
 
   return (
@@ -343,7 +361,7 @@ export function FilterMenu({
         style={{
           transform: isOpen ? 'translateY(0)' : 'translateY(-100%)',
           opacity: isOpen ? 1 : 0,
-          height: isOpen ? '80vh' : '0',
+          height: isOpen ? '85vh' : '0',
           overflow: 'hidden',
         }}
       >
@@ -356,7 +374,7 @@ export function FilterMenu({
             </div>
 
             {/* SearchBar */}
-            <div className="flex items-center bg-white rounded-full px-4 py-2 gap-2 shadow-sm">
+            <div className={`flex items-center bg-white rounded-full px-4 py-2 gap-2 shadow-sm transition-all ${cityError ? 'ring-2 ring-red-400 shadow-red-100' : ''}`}>
               {/* Champ mot-clé */}
               <input
                 type="text"
@@ -375,11 +393,12 @@ export function FilterMenu({
               <div className="flex-1 min-w-0 relative">
                 <input
                   type="text"
-                  placeholder="Ville..."
-                  className={`bg-transparent outline-none text-sm w-full ${city === 'Ma localisation' ? 'text-iakoa-blue font-bold' : ''}`}
+                  placeholder={cityError ? '⚠ Ville requise' : 'Ville...'}
+                  className={`bg-transparent outline-none text-sm w-full ${city === 'Ma localisation' ? 'text-iakoa-blue font-bold' : ''} ${cityError ? 'placeholder:text-red-500 placeholder:font-semibold' : ''}`}
                   value={city}
                   onChange={(e) => {
                     const value = e.target.value;
+                    if (value) setCityError(false);
                     onCityChange?.(value);
                     handleCitySearch(value);
                   }}
@@ -397,7 +416,7 @@ export function FilterMenu({
 
                 {/* Dropdown : Ma localisation + suggestions villes */}
                 {(cityFocused || showCitySuggestions) && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-200">
                     {/* Option Ma localisation */}
                     <button
                       onClick={() => {
@@ -441,11 +460,11 @@ export function FilterMenu({
         </div>
 
         {/* Contenu des filtres - 3 colonnes */}
-        <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-4">
-          <div className="flex flex-col lg:flex-row gap-4 relative">
+        <div className="flex-1 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 h-full">
+          <div className="flex flex-col lg:flex-row gap-4 h-full">
             {/* Colonne 1: Carte avec Rayon */}
-            <div className="shrink-0 w-full lg:w-90">
+            <div className="shrink-0 w-full lg:w-90 overflow-y-auto py-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Localisation
               </h3>
@@ -493,7 +512,7 @@ export function FilterMenu({
             </div>
 
             {/* Colonne 2: Catégories principales */}
-            <div className="flex-1">
+            <div className="flex-1 overflow-y-auto py-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Catégories
               </h3>
@@ -513,12 +532,13 @@ export function FilterMenu({
                     >
                       <button
                         onMouseEnter={() => {
+                          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                           setHoveredGroup(group.id);
                         }}
                         onMouseLeave={() => {
                           hoverTimeoutRef.current = setTimeout(() => {
                             setHoveredGroup(null);
-                          }, 500);
+                          }, 800);
                         }}
                         onClick={() => handleSelectAllInGroup(group.id)}
                         className={`w-full text-left p-1.5 rounded-lg border transition-all overflow-hidden group relative ${
@@ -637,9 +657,19 @@ export function FilterMenu({
             </div>
 
             {/* Colonne 3: Sous-catégories au hover et résumé des filtres */}
-            <div className="flex-1 relative">
+            <div
+              className="flex-1 overflow-y-auto py-4 relative"
+              onMouseEnter={() => {
+                if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+              }}
+              onMouseLeave={() => {
+                hoverTimeoutRef.current = setTimeout(() => {
+                  setHoveredGroup(null);
+                }, 300);
+              }}
+            >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Sélection
+                {hoveredGroup ? 'Sélection' : 'Filtres sélectionnés'}
               </h3>
 
               <div className="transition-all duration-300">
@@ -668,7 +698,9 @@ export function FilterMenu({
                       onClick={() => handleSelectAllInGroup(hoveredGroup)}
                       className="w-full text-left mb-1 text-sm text-iakoa-blue hover:text-blue-700 font-medium"
                     >
-                      Sélectionner tout
+                      {FILTER_CATEGORY_GROUPS.find((g) => g.id === hoveredGroup)?.subcategories.every((sub) => selectedCategories.includes(sub.id))
+                        ? 'Supprimer tout'
+                        : 'Sélectionner tout'}
                     </button>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {FILTER_CATEGORY_GROUPS.find(
@@ -714,11 +746,8 @@ export function FilterMenu({
                     </div>
                   </div>
                 ) : (selectedCategories.length > 0 || city || dateFrom || dateTo || priceMin || priceMax || isFree) ? (
-                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 sticky top-6 animate-in fade-in">
-                    <h4 className="font-semibold text-gray-900 mb-3">
-                      Filtres sélectionnés
-                    </h4>
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 animate-in fade-in">
+                    <div className="space-y-3">
                       {/* Localisation */}
                       {(city || radius !== 2) && (
                         <div className="space-y-1">
@@ -843,12 +872,19 @@ export function FilterMenu({
             >
               Réinitialiser
             </button>
-            <button
-              onClick={handleApply}
-              className="ml-auto px-8 py-2 bg-iakoa-blue text-white hover:bg-blue-600 rounded-lg transition-colors font-medium"
-            >
-              Appliquer les filtres
-            </button>
+            <div className="ml-auto flex items-center gap-4">
+              {!city && (
+                <span className="text-sm text-red-500 font-semibold flex items-center gap-1.5">
+                  <span>⚠</span> Choisissez une ville pour rechercher
+                </span>
+              )}
+              <button
+                onClick={handleApply}
+                className={`px-8 py-2 rounded-lg transition-colors font-medium ${city ? 'bg-iakoa-blue text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+              >
+                Appliquer les filtres
+              </button>
+            </div>
           </div>
         </div>
       </div>

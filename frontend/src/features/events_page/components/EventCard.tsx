@@ -1,7 +1,11 @@
 import { Calendar, Euro, Clock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { EventType } from '@/lib/types/EventType';
-import { getCategoryLabel, getCategoryHexColor, getCategoryShadowColor } from '@/lib/constants/event-category.config';
+import {
+  getCategoryLabel,
+  getCategoryHexColor,
+  getCategoryShadowColor,
+} from '@/lib/constants/event-category.config';
 
 interface EventCardProps {
   event: EventType;
@@ -19,8 +23,8 @@ function getRemainingTime(dateString: string) {
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
   if (months > 0) return `${months} mois`;
-  if (days > 0) return `${days}j ${hours}h`;
-  if (hours > 0) return `${hours}h`;
+  if (days > 0) return `${days} ${days === 1 ? 'jour' : 'jours'}`;
+  if (hours > 0) return `${hours} ${hours === 1 ? 'heure' : 'heures'}`;
   return `Aujourd'hui`;
 }
 
@@ -33,7 +37,9 @@ export function EventCard({ event }: EventCardProps) {
     if (titleRef.current) {
       // Calculer le nombre de lignes du titre
       const scrollHeight = titleRef.current.scrollHeight;
-      const lineHeight = parseInt(window.getComputedStyle(titleRef.current).lineHeight);
+      const lineHeight = parseInt(
+        window.getComputedStyle(titleRef.current).lineHeight,
+      );
       const lines = Math.ceil(scrollHeight / lineHeight);
       setTitleLines(lines);
     }
@@ -75,9 +81,11 @@ export function EventCard({ event }: EventCardProps) {
       onMouseOver={() => setIsActive(true)}
       onMouseLeave={() => setIsActive(false)}
     >
-      <figure className={`overflow-hidden transition-all duration-200 ${
-        titleLines > 1 ? 'h-48' : 'h-60'
-      }`}>
+      <figure
+        className={`overflow-hidden transition-all duration-200 ${
+          titleLines > 1 ? 'h-48' : 'h-60'
+        }`}
+      >
         <img
           src={imageUrl}
           alt={event.name}
@@ -88,7 +96,9 @@ export function EventCard({ event }: EventCardProps) {
       <div className="card-body p-4 gap-2 flex-1 flex flex-col justify-between">
         {/* Titre + Catégories */}
         <div className="space-y-1">
-          <h2 ref={titleRef} className="card-title text-base line-clamp-2">{event.name}</h2>
+          <h2 ref={titleRef} className="card-title text-base line-clamp-2">
+            {event.name}
+          </h2>
           <div className="flex flex-wrap gap-1">
             {event.categories.map((category) => {
               const hexColor = getCategoryHexColor(category);

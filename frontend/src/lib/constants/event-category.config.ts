@@ -1,105 +1,134 @@
 // Configuration des catégories d'événements avec labels français et couleurs
 export interface CategoryConfig {
   label: string;
-  color: string; // classe Tailwind pour le badge (legacy)
-  variant?: string; // variante optionnelle (ex: "badge-outline")
-  hexColor: string; // couleur hex pour les styles personnalisés
-  shadowColor: string; // couleur pour l'ombre (teinte 200)
+  hexColor: string; // couleur hex — principale pour le groupe, variante pour les sous-catégories
 }
 
 export const EVENT_CATEGORY_CONFIG: Record<string, CategoryConfig> = {
-  // Musique et Spectacle
-  CONCERT: { label: 'Concert', color: 'badge-error', hexColor: '#EF4444', shadowColor: '#FECACA' },
-  THEATRE: { label: 'Théâtre', color: 'badge-error', hexColor: '#DC2626', shadowColor: '#FECACA' },
-  SPECTACLE: { label: 'Spectacle', color: 'badge-error', hexColor: '#E11D48', shadowColor: '#FBCFE8' },
-  FANFARE: { label: 'Fanfare', color: 'badge-error', hexColor: '#BE185D', shadowColor: '#FBCFE8' },
-  DANSE: { label: 'Danse', color: 'badge-error', hexColor: '#D1364F', shadowColor: '#FBCFE8' },
-  COURSDEDANSE: { label: 'Cours de danse', color: 'badge-error', hexColor: '#C2185B', shadowColor: '#FBCFE8' },
-  CINEMA: { label: 'Cinéma', color: 'badge-error', hexColor: '#A6194B', shadowColor: '#FBCFE8' },
 
-  // Sport et Aventure
-  TRAIL: { label: 'Trail', color: 'badge-warning', hexColor: '#F97316', shadowColor: '#FED7AA' },
-  SPORT: { label: 'Sport', color: 'badge-warning', variant: 'badge-outline', hexColor: '#EA580C', shadowColor: '#FED7AA' },
-  COMPETITION: { label: 'Compétition', color: 'badge-error', hexColor: '#DC2626', shadowColor: '#FECACA' },
-  RENCONTRESPORTIVE: { label: 'Rencontre sportive', color: 'badge-error', variant: 'badge-outline', hexColor: '#991B1B', shadowColor: '#FEE2E2' },
-  AVENTURE: { label: 'Aventure', color: 'badge-warning', hexColor: '#D97706', shadowColor: '#FED7AA' },
-  RANDONNEE: { label: 'Randonnée', color: 'badge-warning', variant: 'badge-outline', hexColor: '#92400E', shadowColor: '#FEF3C7' },
-  OUTDOOR: { label: 'Outdoor', color: 'badge-error', hexColor: '#B91C1C', shadowColor: '#FEE2E2' },
-  NEIGE: { label: 'Neige', color: 'badge-info', hexColor: '#0369A1', shadowColor: '#CFFAFE' },
-  NAUTISME: { label: 'Nautisme', color: 'badge-info', variant: 'badge-outline', hexColor: '#0C4A6E', shadowColor: '#E0F2FE' },
-  JARDINAGE: { label: 'Jardinage', color: 'badge-success', hexColor: '#16A34A', shadowColor: '#BBFBD0' },
-  FERME: { label: 'Ferme', color: 'badge-success', variant: 'badge-outline', hexColor: '#166534', shadowColor: '#DCFCE7' },
+  // ══════════════════════════════════════════════════════════
+  // 🎭  Musique, Arts & Culture — Famille Cramoisi / Rose
+  //     Principal : #E11D48
+  // ══════════════════════════════════════════════════════════
+  CONCERT:          { label: 'Concert',                   hexColor: '#E11D48' }, // principal
+  SPECTACLE:        { label: 'Spectacle vivant',           hexColor: '#F43F5E' },
+  DANSE:            { label: 'Danse',                      hexColor: '#FB7185' },
+  THEATRE:          { label: 'Théâtre & Comédie',          hexColor: '#BE123C' },
+  CINEMA:           { label: 'Cinéma & Projection',        hexColor: '#9F1239' },
+  OPERA:            { label: 'Opéra & Comédie musicale',   hexColor: '#960F35' },
+  FANFARE:          { label: 'Fanfare & Orchestre',        hexColor: '#FF6080' },
+  HUMOUR:           { label: 'Humour & Stand-up',          hexColor: '#F5607A' },
+  COURSDEDANSE:     { label: 'Cours de danse',             hexColor: '#CC1244' },
+  ART:              { label: 'Art & Création',             hexColor: '#FF4D72' },
+  PEINTURE:         { label: 'Peinture & Dessin',          hexColor: '#C8164A' },
+  PHOTOGRAPHIE:     { label: 'Photographie',               hexColor: '#D01848' },
+  EXPOSITION:       { label: 'Exposition & Galerie',       hexColor: '#A81040' },
+  VERNISSAGE:       { label: 'Vernissage',                 hexColor: '#B80F40' },
+  MUSEE:            { label: 'Musée & Patrimoine culturel',hexColor: '#881337' },
+  MODE:             { label: 'Mode & Design',              hexColor: '#FF8FA3' },
+  LECTURE:          { label: 'Lecture & Littérature',      hexColor: '#F53060' },
+  LANCEMENTDELIVRE: { label: 'Lancement de livre',         hexColor: '#FF6381' },
 
-  // Bien-être et Santé
-  YOGA: { label: 'Yoga', color: 'badge-success', hexColor: '#22C55E', shadowColor: '#BBFBD0' },
-  MEDITATION: { label: 'Méditation', color: 'badge-success', variant: 'badge-outline', hexColor: '#166534', shadowColor: '#DCFCE7' },
-  BIENETRE: { label: 'Bien-être', color: 'badge-success', hexColor: '#4ADE80', shadowColor: '#DCFCE7' },
-  DEVELOPPEMENTPERSONNEL: { label: 'Développement personnel', color: 'badge-success', variant: 'badge-outline', hexColor: '#15803D', shadowColor: '#DCFCE7' },
+  // ══════════════════════════════════════════════════════════
+  // 🏃  Sports & Bien-être — Famille Orange vif
+  //     Principal : #F97316
+  // ══════════════════════════════════════════════════════════
+  TRAIL:                  { label: 'Trail & Course à pied',       hexColor: '#F97316' }, // principal
+  SPORT:                  { label: 'Sport & Activité physique',   hexColor: '#EA580C' },
+  COMPETITION:            { label: 'Compétition & Tournoi',       hexColor: '#C2410C' },
+  RANDONNEE:              { label: 'Randonnée & Trekking',        hexColor: '#9A3412' },
+  AVENTURE:               { label: 'Aventure & Outdoor',          hexColor: '#CC5200' },
+  OUTDOOR:                { label: 'Plein air & Nature',          hexColor: '#B84800' },
+  RENCONTRESPORTIVE:      { label: 'Rencontre sportive',          hexColor: '#BF5500' },
+  CYCLISME:               { label: 'Cyclisme & VTT',              hexColor: '#E56010' },
+  NATATION:               { label: 'Natation & Sports nautiques', hexColor: '#FF8C3A' },
+  NAUTISME:               { label: 'Nautisme & Voile',            hexColor: '#FB923C' },
+  NEIGE:                  { label: 'Sports d\'hiver & Neige',     hexColor: '#FFB08C' },
+  FITNESS:                { label: 'Fitness & Musculation',       hexColor: '#D45500' },
+  YOGA:                   { label: 'Yoga & Respiration',          hexColor: '#FDBA74' },
+  PILATES:                { label: 'Pilates & Stretching',        hexColor: '#FFB070' },
+  MEDITATION:             { label: 'Méditation & Pleine conscience', hexColor: '#FED7AA' },
+  BIENETRE:               { label: 'Bien-être & Relaxation',      hexColor: '#FF9A50' },
+  DEVELOPPEMENTPERSONNEL: { label: 'Développement personnel',     hexColor: '#FF7A28' },
+  JARDINAGE:              { label: 'Jardinage & Permaculture',    hexColor: '#FFAA5E' },
+  FERME:                  { label: 'Ferme & Agriculture',         hexColor: '#E87020' },
 
-  // Art et Culture
-  ART: { label: 'Art', color: 'badge-secondary', hexColor: '#A855F7', shadowColor: '#E9D5FF' },
-  PEINTURE: { label: 'Peinture', color: 'badge-secondary', hexColor: '#9333EA', shadowColor: '#F3E8FF' },
-  PHOTOGRAPHIE: { label: 'Photographie', color: 'badge-secondary', hexColor: '#7E22CE', shadowColor: '#F3E8FF' },
-  EXPOSITION: { label: 'Exposition', color: 'badge-secondary', hexColor: '#6B21A8', shadowColor: '#F3E8FF' },
-  MUSEE: { label: 'Musée', color: 'badge-secondary', hexColor: '#581C87', shadowColor: '#F3E8FF' },
-  LANCEMENTDELIVRE: { label: 'Lancement de livre', color: 'badge-secondary', hexColor: '#8B5CF6', shadowColor: '#E9D5FF' },
-  LECTURE: { label: 'Lecture', color: 'badge-secondary', hexColor: '#A78BFA', shadowColor: '#EDE9FE' },
-  MODE: { label: 'Mode', color: 'badge-secondary', hexColor: '#C4B5FD', shadowColor: '#F5F3FF' },
+  // ══════════════════════════════════════════════════════════
+  // 🎮  Loisirs & Divertissements — Famille Indigo / Violet
+  //     Principal : #6366F1
+  // ══════════════════════════════════════════════════════════
+  JEUX:              { label: 'Jeux de société & Plateau',     hexColor: '#6366F1' }, // principal
+  FESTIVAL:          { label: 'Festival & Grande fête',        hexColor: '#8B5CF6' },
+  SOIREE:            { label: 'Soirée & Bal',                  hexColor: '#A5B4FC' },
+  FETELOCALE:        { label: 'Fête locale & Tradition',       hexColor: '#3730A3' },
+  FERIA:             { label: 'Féria & Festivités taurines',   hexColor: '#312E81' },
+  JOURNEE:           { label: 'Journée thématique & Événement',hexColor: '#6D70F5' },
+  JEUXVIDEO:         { label: 'Jeux vidéo & Gaming',           hexColor: '#4F46E5' },
+  ESPORT:            { label: 'E-sport & Compétition gaming',  hexColor: '#4338CA' },
+  TOURNOIJEUXVIDEO:  { label: 'Tournoi jeux vidéo',            hexColor: '#3B3CB5' },
+  SOIREEJEUX:        { label: 'Soirée jeux & Afterwork',       hexColor: '#5A5EE8' },
+  JEUXDEROLE:        { label: 'Jeux de rôle & Wargame',        hexColor: '#5248DB' },
+  ESCAPEGAME:        { label: 'Escape game & Enquête',         hexColor: '#9395F8' },
+  MANGA:             { label: 'Manga & Animé',                 hexColor: '#818CF8' },
+  COSPLAY:           { label: 'Cosplay & Déguisement',         hexColor: '#7C3AED' },
+  KARAOKE:           { label: 'Karaoké & Scène ouverte',       hexColor: '#B0B3FF' },
 
-  // Jeux et Loisirs
-  JEUX: { label: 'Jeux', color: 'badge-info', hexColor: '#0EA5E9', shadowColor: '#CFFAFE' },
-  JEUXVIDEO: { label: 'Jeux vidéo', color: 'badge-info', variant: 'badge-outline', hexColor: '#075985', shadowColor: '#E0F2FE' },
-  SOIREEJEUX: { label: 'Soirée jeux', color: 'badge-info', hexColor: '#06B6D4', shadowColor: '#CFFAFE' },
-  ESPORT: { label: 'E-sport', color: 'badge-accent', hexColor: '#EC4899', shadowColor: '#FBCFE8' },
-  TOURNOIJEUXVIDEO: { label: 'Tournoi jeux vidéo', color: 'badge-accent', variant: 'badge-outline', hexColor: '#BE185D', shadowColor: '#FBCFE8' },
-  MANGA: { label: 'Manga', color: 'badge-secondary', hexColor: '#D946EF', shadowColor: '#F3E8FF' },
-  COSPLAY: { label: 'Cosplay', color: 'badge-secondary', variant: 'badge-outline', hexColor: '#A21CAF', shadowColor: '#F3E8FF' },
+  // ══════════════════════════════════════════════════════════
+  // 🍽  Gastronomie — Famille Ambre / Doré
+  //     Principal : #D97706
+  // ══════════════════════════════════════════════════════════
+  REPAS:         { label: 'Repas & Dîner gastronomique', hexColor: '#D97706' }, // principal
+  COURSDECUISINE:{ label: 'Cours de cuisine & Atelier',  hexColor: '#B45309' },
+  DEGUSTATION:   { label: 'Dégustation & Œnologie',      hexColor: '#F59E0B' },
+  DEJEUNER:      { label: 'Déjeuner & Table d\'hôte',    hexColor: '#FBBF24' },
+  BAR:           { label: 'Bar & Cocktail',              hexColor: '#92400E' },
+  BRUNCH:        { label: 'Brunch & Petit-déjeuner',     hexColor: '#E8A208' },
+  PIQUENIQUE:    { label: 'Pique-nique & Apéro',         hexColor: '#FCD34D' },
+  FOODTRUCK:     { label: 'Food truck & Street food',    hexColor: '#C67C0A' },
 
-  // Gastronomie
-  REPAS: { label: 'Repas', color: 'badge-accent', hexColor: '#F59E0B', shadowColor: '#FEF3C7' },
-  DEJEUNER: { label: 'Déjeuner', color: 'badge-accent', hexColor: '#FBBF24', shadowColor: '#FEF3C7' },
-  COURSDECUISINE: { label: 'Cours de cuisine', color: 'badge-accent', hexColor: '#F97316', shadowColor: '#FED7AA' },
-  DEGUSTATION: { label: 'Dégustation', color: 'badge-accent', hexColor: '#FB923C', shadowColor: '#FEDBA9' },
-  BAR: { label: 'Bar', color: 'badge-accent', hexColor: '#FDBA74', shadowColor: '#FEF3C7' },
+  // ══════════════════════════════════════════════════════════
+  // 🔬  Savoir & Découverte — Famille Sarcelle / Cyan
+  //     Principal : #0D9488
+  // ══════════════════════════════════════════════════════════
+  CONFERENCE:        { label: 'Conférence & Débat',             hexColor: '#0D9488' }, // principal
+  ATELIER:           { label: 'Atelier participatif & Pratique',hexColor: '#0D7A74' },
+  FORMATION:         { label: 'Formation & Stage',              hexColor: '#0F766E' },
+  LANGUES:           { label: 'Langues & Échanges linguistiques',hexColor: '#14B8A6' },
+  SCIENCE:           { label: 'Science & Recherche',            hexColor: '#0891B2' },
+  TECHNOLOGIE:       { label: 'Innovation & Numérique',         hexColor: '#06B6D4' },
+  NUMERIQUE:         { label: 'Atelier numérique & Coding',     hexColor: '#0CB4A6' },
+  DECOUVERTE:        { label: 'Découverte & Exploration',       hexColor: '#2DD4BF' },
+  PATRIMOINE:        { label: 'Patrimoine & Histoire locale',   hexColor: '#115E59' },
+  VISITE:            { label: 'Visite guidée & Balade',         hexColor: '#134E4A' },
+  PHILOSOPHIE:       { label: 'Philosophie & Conférence citoyenne', hexColor: '#0E8078' },
+  CREATIVITE:        { label: 'Créativité & Expression artistique', hexColor: '#1CC4B0' },
+  BRICOLAGE:         { label: 'Bricolage & DIY',                hexColor: '#0A6E68' },
+  SALONPROFESSIONNEL:{ label: 'Salon & Forum professionnel',    hexColor: '#128878' },
 
-  // Événements et Festivals
-  FESTIVAL: { label: 'Festival', color: 'badge-primary', hexColor: '#3B82F6', shadowColor: '#DBEAFE' },
-  FETELOCALE: { label: 'Fête locale', color: 'badge-primary', hexColor: '#1E40AF', shadowColor: '#EFF6FF' },
-  FERIA: { label: 'Féria', color: 'badge-primary', hexColor: '#1E3A8A', shadowColor: '#EFF6FF' },
-  SOIREE: { label: 'Soirée', color: 'badge-primary', hexColor: '#2563EB', shadowColor: '#DBEAFE' },
-  JOURNEE: { label: 'Journée', color: 'badge-primary', hexColor: '#60A5FA', shadowColor: '#E0E7FF' },
+  // ══════════════════════════════════════════════════════════
+  // 🛒  Marché & Commerce — Famille Brun Ambre
+  //     Principal : #B45309
+  // ══════════════════════════════════════════════════════════
+  MARCHE:       { label: 'Marché & Bazar',            hexColor: '#B45309' }, // principal
+  BROCANTE:     { label: 'Brocante & Antiquités',     hexColor: '#92400E' },
+  VIDEGRENIER:  { label: 'Vide-grenier & Troc',       hexColor: '#D97706' },
+  ENCHERES:     { label: 'Enchères & Vente aux enchères', hexColor: '#78350F' },
+  ARTISANAT:    { label: 'Artisanat & Fait main',     hexColor: '#A8520A' },
+  SALONARTISANAT:{ label: 'Salon artisanat & Créateurs', hexColor: '#C06010' },
 
-  // Formation et Conférences
-  CONFERENCE: { label: 'Conférence', color: 'badge-ghost', hexColor: '#6B7280', shadowColor: '#F3F4F6' },
-  FORMATION: { label: 'Formation', color: 'badge-ghost', variant: 'badge-outline', hexColor: '#374151', shadowColor: '#F9FAFB' },
-  LANGUES: { label: 'Langues', color: 'badge-secondary', hexColor: '#A78BFA', shadowColor: '#EDE9FE' },
-  SALONPROFESSIONNEL: { label: 'Salon professionnel', color: 'badge-secondary', variant: 'badge-outline', hexColor: '#5B21B6', shadowColor: '#F3E8FF' },
-  SCIENCE: { label: 'Science', color: 'badge-info', hexColor: '#06B6D4', shadowColor: '#CFFAFE' },
-
-  // Découverte et Patrimoine
-  DECOUVERTE: { label: 'Découverte', color: 'badge-primary', hexColor: '#6366F1', shadowColor: '#E0E7FF' },
-  PATRIMOINE: { label: 'Patrimoine', color: 'badge-primary', hexColor: '#4F46E5', shadowColor: '#E0E7FF' },
-  VISITE: { label: 'Visite', color: 'badge-primary', hexColor: '#4338CA', shadowColor: '#E0E7FF' },
-  ATELIER: { label: 'Atelier', color: 'badge-primary', hexColor: '#3730A3', shadowColor: '#E0E7FF' },
-  BRICOLAGE: { label: 'Bricolage', color: 'badge-primary', hexColor: '#312E81', shadowColor: '#EFF6FF' },
-
-  // Marché et Commerce
-  MARCHE: { label: 'Marche', color: 'badge-warning', hexColor: '#B45309', shadowColor: '#FEF3C7' },
-  BROCANTE: { label: 'Brocante', color: 'badge-warning', variant: 'badge-outline', hexColor: '#78350F', shadowColor: '#FEFCE8' },
-  VIDEGRENIER: { label: 'Vide-grenier', color: 'badge-warning', hexColor: '#D97706', shadowColor: '#FED7AA' },
-  ENCHERES: { label: 'Enchères', color: 'badge-secondary', variant: 'badge-outline', hexColor: '#7C3AED', shadowColor: '#EDE9FE' },
-
-  // Causes sociales
-  ANIMAUX: { label: 'Animaux', color: 'badge-success', variant: 'badge-outline', hexColor: '#065F46', shadowColor: '#DCFCE7' },
-  BENEVOLAT: { label: 'Bénévolat', color: 'badge-success', hexColor: '#10B981', shadowColor: '#D1FAE5' },
-  ECOLOGIE: { label: 'Écologie', color: 'badge-success', variant: 'badge-outline', hexColor: '#047857', shadowColor: '#DCFCE7' },
-  SOLIDARITE: { label: 'Solidarité', color: 'badge-warning', hexColor: '#FBBF24', shadowColor: '#FEF3C7' },
-  RENCONTRE: { label: 'Rencontre', color: 'badge-accent', hexColor: '#F472B6', shadowColor: '#FBCFE8' },
-  EVENEMENTCARITATIF: { label: 'Événement caritatif', color: 'badge-error', variant: 'badge-outline', hexColor: '#7F1D1D', shadowColor: '#FEE2E2' },
-
-  // Technologie
-  TECHNOLOGIE: { label: 'Technologie', color: 'badge-info', hexColor: '#0284C7', shadowColor: '#CFFAFE' },
-  NATURE: { label: 'Nature', color: 'badge-success', hexColor: '#059669', shadowColor: '#D1FAE5' },
+  // ══════════════════════════════════════════════════════════
+  // 💚  Causes Sociales & Écologie — Famille Vert
+  //     Principal : #16A34A
+  // ══════════════════════════════════════════════════════════
+  ECOLOGIE:          { label: 'Écologie & Environnement',   hexColor: '#16A34A' }, // principal
+  SOLIDARITE:        { label: 'Solidarité & Entraide',      hexColor: '#15803D' },
+  BENEVOLAT:         { label: 'Bénévolat & Action collective', hexColor: '#22C55E' },
+  ANIMAUX:           { label: 'Animaux & Protection faune', hexColor: '#4ADE80' },
+  NATURE:            { label: 'Nature & Biodiversité',      hexColor: '#166534' },
+  HUMANITAIRE:       { label: 'Action humanitaire',         hexColor: '#34D399' },
+  EVENEMENTCARITATIF:{ label: 'Événement caritatif & Don', hexColor: '#14924A' },
+  FAMILLE:           { label: 'Famille & Petite enfance',   hexColor: '#2DB855' },
+  RENCONTRE:         { label: 'Rencontre & Lien social',    hexColor: '#1FAD4C' },
 };
 
 /**
@@ -110,20 +139,6 @@ export function getCategoryLabel(category: string): string {
 }
 
 /**
- * Récupère la couleur d'une catégorie (avec variante optionnelle)
- */
-export function getCategoryColor(category: string): string {
-  const config = EVENT_CATEGORY_CONFIG[category];
-  if (!config) return 'badge-primary';
-
-  const classes = [config.color];
-  if (config.variant) {
-    classes.push(config.variant);
-  }
-  return classes.join(' ');
-}
-
-/**
  * Récupère la couleur hex d'une catégorie
  */
 export function getCategoryHexColor(category: string): string {
@@ -131,8 +146,9 @@ export function getCategoryHexColor(category: string): string {
 }
 
 /**
- * Récupère la couleur d'ombre (teinte 200) d'une catégorie
+ * Dérive une couleur d'ombre depuis la hexColor de la catégorie (20% d'opacité)
  */
 export function getCategoryShadowColor(category: string): string {
-  return EVENT_CATEGORY_CONFIG[category]?.shadowColor || '#DBEAFE';
+  const hex = getCategoryHexColor(category);
+  return `${hex}33`;
 }
