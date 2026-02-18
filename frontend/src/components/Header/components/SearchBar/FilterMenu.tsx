@@ -26,6 +26,7 @@ import {
   Leaf,
 } from 'lucide-react';
 import { FILTER_CATEGORY_GROUPS } from '@/lib/constants/filter-categories';
+import { getCategoryHexColor } from '@/lib/constants/event-category.config';
 import { MapPreview } from './MapPreview';
 import iakoaLogo from '@/assets/logo-iakoa.svg';
 import { useFilters } from '@/features/events_page/FilterContext';
@@ -118,6 +119,34 @@ export interface FilterState {
 
 const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 
+
+function fmtDate(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+function getThisWeekDates() {
+  const today = new Date();
+  const day = today.getDay();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + (day === 0 ? 0 : 7 - day));
+  return { from: fmtDate(today), to: fmtDate(sunday) };
+}
+function getWeekendDates() {
+  const today = new Date();
+  const day = today.getDay();
+  if (day === 6) {
+    const sun = new Date(today); sun.setDate(today.getDate() + 1);
+    return { from: fmtDate(today), to: fmtDate(sun) };
+  }
+  if (day === 0) return { from: fmtDate(today), to: fmtDate(today) };
+  const sat = new Date(today); sat.setDate(today.getDate() + (6 - day));
+  const sun = new Date(sat);   sun.setDate(sat.getDate() + 1);
+  return { from: fmtDate(sat), to: fmtDate(sun) };
+}
+function getTodayDates() {
+  const today = new Date();
+  return { from: fmtDate(today), to: fmtDate(today) };
+}
+
 export function FilterMenu({
   isOpen,
   onClose,
@@ -127,23 +156,43 @@ export function FilterMenu({
   onKeywordChange,
   onCityChange,
 }: FilterMenuProps) {
-  const { filters, updateRadius, updateCategories, updateCity: updateCityFilter, updateKeyword: updateKeywordFilter, updateDateRange, updatePrice } = useFilters();
+  const {
+    filters,
+    updateRadius,
+    updateCategories,
+    updateCity: updateCityFilter,
+    updateKeyword: updateKeywordFilter,
+    updateDateRange,
+    updatePrice,
+  } = useFilters();
   const [radius, setRadius] = useState(filters.radius);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(filters.selectedCategories);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    filters.selectedCategories,
+  );
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(
+    null,
+  );
   const [cityLat, setCityLat] = useState<number | undefined>(filters.latitude);
   const [cityLon, setCityLon] = useState<number | undefined>(filters.longitude);
   const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
   const [dateTo, setDateTo] = useState(filters.dateTo || '');
-  const [priceMin, setPriceMin] = useState<string>(filters.priceMin !== undefined ? String(filters.priceMin / 100) : '');
-  const [priceMax, setPriceMax] = useState<string>(filters.priceMax !== undefined ? String(filters.priceMax / 100) : '');
+  const [priceMin, setPriceMin] = useState<string>(
+    filters.priceMin !== undefined ? String(filters.priceMin / 100) : '',
+  );
+  const [priceMax, setPriceMax] = useState<string>(
+    filters.priceMax !== undefined ? String(filters.priceMax / 100) : '',
+  );
   const [isFree, setIsFree] = useState(filters.isFree);
+  const [activeDatePreset, setActiveDatePreset] = useState<'today' | 'week' | 'weekend' | null>(null);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
+  const [cityFocused, setCityFocused] = useState(false);
   const hoveredGroupRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Synchroniser les filtres locaux avec les filtres globaux
   useEffect(() => {
@@ -153,20 +202,26 @@ export function FilterMenu({
 
   const handleGeolocation = () => {
     if (!navigator.geolocation) {
-      alert('La géolocalisation n\'est pas disponible dans votre navigateur');
+      alert("La géolocalisation n'est pas disponible dans votre navigateur");
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (location) => {
-        setUserPosition([location.coords.latitude, location.coords.longitude]);
+        const lat = location.coords.latitude;
+        const lon = location.coords.longitude;
+        setUserPosition([lat, lon]);
+        setCityLat(lat);
+        setCityLon(lon);
+        onCityChange?.('Ma localisation');
       },
       () => {
-        alert('Impossible d\'accéder à votre localisation. Vérifiez les permissions.');
-      }
+        alert(
+          "Impossible d'accéder à votre localisation. Vérifiez les permissions.",
+        );
+      },
     );
   };
-
 
   const searchCities = async (query: string) => {
     if (query.length < 2) {
@@ -176,7 +231,7 @@ export function FilterMenu({
 
     try {
       const response = await fetch(
-        `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement&boost=population&limit=5`
+        `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement&boost=population&limit=5`,
       );
       const data = await response.json();
 
@@ -221,7 +276,7 @@ export function FilterMenu({
 
     const groupCategoryIds = group.subcategories.map((sub) => sub.id);
     const allSelected = groupCategoryIds.every((id) =>
-      selectedCategories.includes(id)
+      selectedCategories.includes(id),
     );
 
     setSelectedCategories((prev) => {
@@ -239,7 +294,7 @@ export function FilterMenu({
     const group = FILTER_CATEGORY_GROUPS.find((g) => g.id === groupId);
     if (!group) return 0;
     return group.subcategories.filter((sub) =>
-      selectedCategories.includes(sub.id)
+      selectedCategories.includes(sub.id),
     ).length;
   };
 
@@ -267,6 +322,7 @@ export function FilterMenu({
     setPriceMin('');
     setPriceMax('');
     setIsFree(false);
+    setActiveDatePreset(null);
   };
 
   return (
@@ -283,26 +339,20 @@ export function FilterMenu({
 
       {/* Menu de filtres avec animation */}
       <div
-        className="fixed top-0 left-0 right-0 bg-white shadow-2xl z-50 overflow-y-auto transition-all duration-300 ease-out"
+        className="fixed top-0 left-0 right-0 bg-white shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out"
         style={{
           transform: isOpen ? 'translateY(0)' : 'translateY(-100%)',
           opacity: isOpen ? 1 : 0,
-          maxHeight: isOpen ? '90vh' : '0',
+          height: isOpen ? '80vh' : '0',
+          overflow: 'hidden',
         }}
       >
         {/* Header avec Logo et SearchBar */}
-        <div className="bg-linear-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+        <div className="bg-linear-to-r from-gray-50 to-gray-100 px-6 py-2 border-b border-gray-200 shrink-0">
           <div className="max-w-6xl mx-auto">
             {/* Logo et titre */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
               <img src={iakoaLogo} alt="Logo IAKOA" className="w-32" />
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Fermer"
-              >
-                <X className="h-6 w-6 text-gray-600" />
-              </button>
             </div>
 
             {/* SearchBar */}
@@ -321,12 +371,12 @@ export function FilterMenu({
                 <div className="w-px bg-gray-300 h-5" />
               </div>
 
-              {/* Champ ville avec autocomplétion API Nominatim */}
+              {/* Champ ville avec autocomplétion */}
               <div className="flex-1 min-w-0 relative">
                 <input
                   type="text"
                   placeholder="Ville..."
-                  className="bg-transparent outline-none text-sm w-full"
+                  className={`bg-transparent outline-none text-sm w-full ${city === 'Ma localisation' ? 'text-iakoa-blue font-bold' : ''}`}
                   value={city}
                   onChange={(e) => {
                     const value = e.target.value;
@@ -334,18 +384,34 @@ export function FilterMenu({
                     handleCitySearch(value);
                   }}
                   onFocus={() => {
-                    if (city.length >= 2) {
-                      searchCities(city);
-                    }
+                    setCityFocused(true);
+                    if (city.length >= 2) searchCities(city);
                   }}
                   onBlur={() => {
-                    setTimeout(() => setShowCitySuggestions(false), 200);
+                    setTimeout(() => {
+                      setShowCitySuggestions(false);
+                      setCityFocused(false);
+                    }, 200);
                   }}
                 />
 
-                {/* Suggestions de villes */}
-                {showCitySuggestions && citySuggestions.length > 0 && (
+                {/* Dropdown : Ma localisation + suggestions villes */}
+                {(cityFocused || showCitySuggestions) && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    {/* Option Ma localisation */}
+                    <button
+                      onClick={() => {
+                        handleGeolocation();
+                        setCityFocused(false);
+                        setShowCitySuggestions(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2 border-b border-gray-100"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-iakoa-blue shrink-0" />
+                      <span className="font-bold text-sm text-iakoa-blue">Ma localisation</span>
+                    </button>
+
+                    {/* Suggestions de villes */}
                     {citySuggestions.map((c) => (
                       <button
                         key={`${c.name}-${c.lat}-${c.lon}`}
@@ -356,6 +422,7 @@ export function FilterMenu({
                           setCityLon(c.lon);
                           setUserPosition([c.lat, c.lon]);
                           setShowCitySuggestions(false);
+                          setCityFocused(false);
                         }}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors text-sm"
                       >
@@ -369,28 +436,20 @@ export function FilterMenu({
                   </div>
                 )}
               </div>
-
-              {/* Bouton localisation */}
-              <button
-                onClick={handleGeolocation}
-                className="flex items-center justify-center h-5 w-5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer shrink-0"
-                title="Utiliser ma localisation"
-              >
-                <MapPin className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </div>
 
         {/* Contenu des filtres - 3 colonnes */}
-        <div className="max-w-6xl mx-auto p-6">
-          <div className="flex flex-col lg:flex-row gap-6 relative">
+        <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto p-4">
+          <div className="flex flex-col lg:flex-row gap-4 relative">
             {/* Colonne 1: Carte avec Rayon */}
-            <div className="shrink-0 w-full lg:w-96">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="shrink-0 w-full lg:w-90">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Localisation
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {/* Slider avec 7 crans */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -430,83 +489,20 @@ export function FilterMenu({
                 <div className="hidden lg:block">
                   <MapPreview radius={radius} userPosition={userPosition} />
                 </div>
-
-                {/* Filtre par date */}
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-gray-700">Date</span>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-xs text-gray-500">Du</label>
-                      <input
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs text-gray-500">Au</label>
-                      <input
-                        type="date"
-                        value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Filtre par prix */}
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-gray-700">Prix</span>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isFree}
-                      onChange={(e) => setIsFree(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-iakoa-blue focus:ring-iakoa-blue"
-                    />
-                    <span className="text-sm text-gray-700">Gratuit uniquement</span>
-                  </label>
-                  {!isFree && (
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <input
-                          type="number"
-                          placeholder="Min €"
-                          min="0"
-                          step="0.01"
-                          value={priceMin}
-                          onChange={(e) => setPriceMin(e.target.value)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <input
-                          type="number"
-                          placeholder="Max €"
-                          min="0"
-                          step="0.01"
-                          value={priceMax}
-                          onChange={(e) => setPriceMax(e.target.value)}
-                          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 
             {/* Colonne 2: Catégories principales */}
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Catégories
               </h3>
-              <div className="grid grid-cols-1 gap-3 relative">
+              <div className="grid grid-cols-1 gap-1.5 relative">
                 {FILTER_CATEGORY_GROUPS.map((group) => {
                   const selectedCount = getSelectedCount(group.id);
-                  const isGroupSelected = selectedCount === group.subcategories.length && selectedCount > 0;
+                  const isGroupSelected =
+                    selectedCount === group.subcategories.length &&
+                    selectedCount > 0;
                   const isHovered = hoveredGroup === group.id;
 
                   return (
@@ -525,33 +521,39 @@ export function FilterMenu({
                           }, 500);
                         }}
                         onClick={() => handleSelectAllInGroup(group.id)}
-                        className={`w-full text-left p-3 rounded-lg border transition-all overflow-hidden group relative ${
+                        className={`w-full text-left p-1.5 rounded-lg border transition-all overflow-hidden group relative ${
                           isGroupSelected
                             ? 'border-iakoa-blue bg-blue-50 shadow-md'
-                            : 'border-gray-200 hover:border-iakoa-blue hover:shadow-md'
+                            : 'border-gray-200 hover:shadow-md'
                         }`}
                         style={{
-                          backgroundImage: isGroupSelected ? 'none' : `url(${group.image})`,
+                          backgroundImage: isGroupSelected
+                            ? 'none'
+                            : `url(${group.image})`,
                           backgroundSize: 'cover',
                           backgroundPosition: 'center',
-                          minHeight: '59.5px',
+                          minHeight: '42px',
                         }}
                       >
                         {!isGroupSelected && (
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-all" />
+                          <div className="absolute inset-0 bg-black/25 group-hover:bg-black/60 transition-all" />
                         )}
                         <div className="relative z-10 flex items-center justify-between">
-                          <span className={`font-bold text-sm drop-shadow-md block ${
-                            isGroupSelected ? 'text-iakoa-blue' : 'text-white'
-                          }`}>
+                          <span
+                            className={`font-bold text-base drop-shadow-md block ${
+                              isGroupSelected ? 'text-iakoa-blue' : 'text-white'
+                            }`}
+                          >
                             {group.label}
                           </span>
                           {selectedCount > 0 && (
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                              isGroupSelected
-                                ? 'bg-iakoa-blue text-white'
-                                : 'bg-iakoa-blue text-white'
-                            }`}>
+                            <span
+                              className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                isGroupSelected
+                                  ? 'bg-iakoa-blue text-white'
+                                  : 'bg-iakoa-blue text-white'
+                              }`}
+                            >
                               {selectedCount}
                             </span>
                           )}
@@ -560,12 +562,83 @@ export function FilterMenu({
                     </div>
                   );
                 })}
+                {/* Filtre par date */}
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-gray-700">Date</span>
+                  {/* Raccourcis rapides */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { const d = getTodayDates(); setDateFrom(d.from); setDateTo(d.to); setActiveDatePreset('today'); }}
+                      className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${activeDatePreset === 'today' ? 'bg-iakoa-blue text-white border-iakoa-blue' : 'border-gray-200 text-gray-600 hover:border-iakoa-blue hover:text-iakoa-blue'}`}
+                    >
+                      Aujourd'hui
+                    </button>
+                    <button
+                      onClick={() => { const d = getThisWeekDates(); setDateFrom(d.from); setDateTo(d.to); setActiveDatePreset('week'); }}
+                      className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${activeDatePreset === 'week' ? 'bg-iakoa-blue text-white border-iakoa-blue' : 'border-gray-200 text-gray-600 hover:border-iakoa-blue hover:text-iakoa-blue'}`}
+                    >
+                      Cette semaine
+                    </button>
+                    <button
+                      onClick={() => { const d = getWeekendDates(); setDateFrom(d.from); setDateTo(d.to); setActiveDatePreset('weekend'); }}
+                      className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${activeDatePreset === 'weekend' ? 'bg-iakoa-blue text-white border-iakoa-blue' : 'border-gray-200 text-gray-600 hover:border-iakoa-blue hover:text-iakoa-blue'}`}
+                    >
+                      Ce week-end
+                    </button>
+                  </div>
+                  {/* Champs manuels */}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-sm text-gray-500">Du</label>
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => { setDateFrom(e.target.value); setActiveDatePreset(null); }}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-sm font-bold text-gray-500">Au</label>
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => { setDateTo(e.target.value); setActiveDatePreset(null); }}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Filtre par prix */}
+                <div className="space-y-2">
+                  <span className="text-sm font-medium text-gray-700">Prix</span>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      placeholder="Max €"
+                      min="0"
+                      step="0.01"
+                      value={priceMax}
+                      onChange={(e) => setPriceMax(e.target.value)}
+                      disabled={isFree}
+                      className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue disabled:opacity-40 disabled:bg-gray-50"
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isFree}
+                        onChange={(e) => setIsFree(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-iakoa-blue focus:ring-iakoa-blue"
+                      />
+                      <span className="text-sm text-gray-400">Gratuit uniquement</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Colonne 3: Sous-catégories au hover et résumé des filtres */}
             <div className="flex-1 relative">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Sélection
               </h3>
 
@@ -586,8 +659,9 @@ export function FilterMenu({
                   >
                     <h4 className="font-semibold text-gray-900 mb-4">
                       {
-                        FILTER_CATEGORY_GROUPS.find((g) => g.id === hoveredGroup)
-                          ?.label
+                        FILTER_CATEGORY_GROUPS.find(
+                          (g) => g.id === hoveredGroup,
+                        )?.label
                       }
                     </h4>
                     <button
@@ -600,7 +674,9 @@ export function FilterMenu({
                       {FILTER_CATEGORY_GROUPS.find(
                         (g) => g.id === hoveredGroup,
                       )?.subcategories.map((subcategory) => {
-                        const isSelected = selectedCategories.includes(subcategory.id);
+                        const isSelected = selectedCategories.includes(
+                          subcategory.id,
+                        );
                         const IconComponent = SUBCATEGORY_ICONS[subcategory.id];
                         return (
                           <button
@@ -612,20 +688,24 @@ export function FilterMenu({
                                 : 'hover:bg-gray-100 border border-transparent'
                             }`}
                           >
-                            <div className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
-                              isSelected
-                                ? 'text-iakoa-blue'
-                                : 'text-gray-400'
-                            }`}>
+                            <div
+                              className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
+                                isSelected ? 'text-iakoa-blue' : 'text-gray-400'
+                              }`}
+                            >
                               {IconComponent ? (
                                 <IconComponent className="w-5 h-5" />
                               ) : (
                                 <Check className="w-5 h-5" />
                               )}
                             </div>
-                            <span className={`text-sm ${
-                              isSelected ? 'text-gray-900 font-medium' : 'text-gray-700'
-                            }`}>
+                            <span
+                              className={`text-sm ${
+                                isSelected
+                                  ? 'text-gray-900 font-medium'
+                                  : 'text-gray-700'
+                              }`}
+                            >
                               {subcategory.label}
                             </span>
                           </button>
@@ -633,31 +713,106 @@ export function FilterMenu({
                       })}
                     </div>
                   </div>
-                ) : selectedCategories.length > 0 ? (
-                  <div className="bg-blue-50 rounded-lg border border-iakoa-blue p-4 sticky top-6 animate-in fade-in">
+                ) : (selectedCategories.length > 0 || city || dateFrom || dateTo || priceMin || priceMax || isFree) ? (
+                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 sticky top-6 animate-in fade-in">
                     <h4 className="font-semibold text-gray-900 mb-3">
                       Filtres sélectionnés
                     </h4>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {/* Localisation */}
+                      {(city || radius !== 2) && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-400 uppercase">Localisation</p>
+                          <div className="flex flex-wrap gap-1">
+                            {city && (
+                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                {city}
+                              </span>
+                            )}
+                            <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                              {radius} km
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {/* Date */}
+                      {(dateFrom || dateTo) && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-400 uppercase">Date</p>
+                          <div className="flex flex-wrap gap-1">
+                            {activeDatePreset ? (
+                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                {activeDatePreset === 'today' && "Aujourd'hui"}
+                                {activeDatePreset === 'week' && 'Cette semaine'}
+                                {activeDatePreset === 'weekend' && 'Ce week-end'}
+                              </span>
+                            ) : (
+                              <>
+                                {dateFrom && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                    Du {dateFrom}
+                                  </span>
+                                )}
+                                {dateTo && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                    Au {dateTo}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Prix */}
+                      {(isFree || priceMin || priceMax) && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-gray-400 uppercase">Prix</p>
+                          <div className="flex flex-wrap gap-1">
+                            {isFree ? (
+                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                Gratuit
+                              </span>
+                            ) : (
+                              <>
+                                {priceMin && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                    Min {priceMin}€
+                                  </span>
+                                )}
+                                {priceMax && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                                    Max {priceMax}€
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Catégories - 2 colonnes */}
                       {FILTER_CATEGORY_GROUPS.map((group) => {
-                        const groupSelected = group.subcategories.filter((sub) =>
-                          selectedCategories.includes(sub.id)
+                        const groupSelected = group.subcategories.filter(
+                          (sub) => selectedCategories.includes(sub.id),
                         );
                         if (groupSelected.length === 0) return null;
+                        const groupHex = getCategoryHexColor(group.subcategories[0]?.id);
 
                         return (
                           <div key={group.id} className="space-y-1">
-                            <p className="text-xs font-semibold text-iakoa-blue uppercase">
+                            <p className="text-xs font-semibold uppercase" style={{ color: groupHex }}>
                               {group.label}
                             </p>
-                            <div className="space-y-1">
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
                               {groupSelected.map((sub) => (
                                 <div
                                   key={sub.id}
-                                  className="flex items-center gap-2 text-sm text-gray-700"
+                                  className="flex items-center gap-1.5 text-xs text-gray-700 min-w-0"
                                 >
-                                  <div className="w-1.5 h-1.5 bg-iakoa-blue rounded-full" />
-                                  {sub.label}
+                                  <div
+                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: getCategoryHexColor(sub.id) }}
+                                  />
+                                  <span className="truncate">{sub.label}</span>
                                 </div>
                               ))}
                             </div>
@@ -677,8 +832,11 @@ export function FilterMenu({
             </div>
           </div>
 
-          {/* Boutons d'action */}
-          <div className="flex items-center gap-4 mt-8 pt-6 border-t border-gray-200">
+        </div>
+        </div>
+        {/* Boutons d'action - fixés en bas */}
+        <div className="shrink-0 border-t border-gray-200 bg-white">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4">
             <button
               onClick={handleReset}
               className="px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"

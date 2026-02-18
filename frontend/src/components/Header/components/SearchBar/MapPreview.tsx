@@ -48,27 +48,28 @@ export function MapPreview({ radius, userPosition }: MapPreviewProps) {
 
   if (isLoading) {
     return (
-      <div className="w-96 h-96 bg-gray-200 rounded-lg lg:flex items-center justify-center">
+      <div className="w-90 h-90 bg-gray-200 rounded-lg lg:flex items-center justify-center">
         <span className="text-gray-600">Chargement de la carte...</span>
       </div>
     );
   }
 
   return (
-    <div className="w-96 h-96 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto">
+    <div className="w-90 h-90 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto">
       <MapContainer
         center={position}
         zoom={zoom}
         style={{ width: '100%', height: '100%' }}
-        dragging={false}
+        dragging={true}
         zoomControl={false}
         scrollWheelZoom={false}
         doubleClickZoom={false}
         touchZoom={false}
+        attributionControl={false}
         key={`${position[0]}-${position[1]}-${zoom}`}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 

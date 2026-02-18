@@ -13,7 +13,7 @@ interface EventsPageProps {
 function EventsPage({ text, showCards = true }: EventsPageProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { events = [], isLoading = false, error = null, fetchEventsPaginated, fetchMoreEvents, prefetchNextPage, totalPages = 1, fetchFilteredEvents } = useEvents();
+  const { events = [], isLoading = false, error = null, fetchMoreEvents, prefetchNextPage, totalPages = 1, fetchFilteredEvents } = useEvents();
   const { filters, updatePosition } = useFilters();
   const [currentPage, setCurrentPage] = useState(1);
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);

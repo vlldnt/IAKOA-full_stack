@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, MapPin, Sliders, Loader, X } from 'lucide-react';
+import { Search, MapPin, Sliders, X } from 'lucide-react';
 import { FilterMenu, type FilterState } from './FilterMenu';
 import { useFilters } from '@/features/events_page/FilterContext';
 
@@ -25,9 +25,9 @@ export function SearchBars() {
     null,
   );
   const [showFilterTooltip, setShowFilterTooltip] = useState(false);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
+  const [cityFocused, setCityFocused] = useState(false);
   const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Synchroniser les filtres globaux avec l'état local
@@ -122,19 +122,16 @@ export function SearchBars() {
       return;
     }
 
-    setIsLoadingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords;
-        // TODO: Convertir les coordonnées en nom de ville via une API (reverse geocoding)
-        // Pour l'instant, on affiche les coordonnées
-        setCity(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
-        setIsLoadingLocation(false);
+        setCity('Ma localisation');
+        setCityLat(latitude);
+        setCityLon(longitude);
       },
       (error) => {
         console.error('Erreur de géolocalisation:', error);
         alert('Impossible de récupérer votre localisation');
-        setIsLoadingLocation(false);
       },
     );
   };
@@ -168,12 +165,12 @@ export function SearchBars() {
           {/* Séparateur vertical */}
           <div className="h-5 w-px bg-gray-300 shrink-0" />
 
-          {/* Champ ville avec bouton de localisation */}
-          <div className="flex items-center gap-1 relative flex-1 min-w-0 lg:flex-none lg:w-64">
+          {/* Champ ville */}
+          <div className="relative flex-1 min-w-0 lg:flex-none lg:w-64">
             <input
               type="text"
               placeholder="Ville..."
-              className="bg-transparent outline-none text-sm flex-1 min-w-0"
+              className={`bg-transparent outline-none text-sm w-full ${city === 'Ma localisation' ? 'text-iakoa-blue font-bold' : ''}`}
               value={city}
               onChange={(e) => {
                 const value = e.target.value;
@@ -184,18 +181,31 @@ export function SearchBars() {
               }}
               onKeyDown={handleKeyDown}
               onFocus={() => {
-                if (city.length >= 2) {
-                  searchCities(city);
-                }
+                setCityFocused(true);
+                if (city.length >= 2) searchCities(city);
               }}
               onBlur={() => {
-                setTimeout(() => setShowCitySuggestions(false), 200);
+                setTimeout(() => {
+                  setShowCitySuggestions(false);
+                  setCityFocused(false);
+                }, 200);
               }}
             />
 
-            {/* Suggestions de villes */}
-            {showCitySuggestions && citySuggestions.length > 0 && (
-              <div className="absolute top-full left-1 right-1 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-full min-w-80 lg:min-w-96">
+            {/* Dropdown : Ma localisation + suggestions villes */}
+            {(cityFocused || showCitySuggestions) && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-64">
+                <button
+                  onClick={() => {
+                    handleGetLocation();
+                    setCityFocused(false);
+                    setShowCitySuggestions(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2 border-b border-gray-100"
+                >
+                  <MapPin className="h-3.5 w-3.5 text-iakoa-blue shrink-0" />
+                  <span className="font-bold text-sm text-iakoa-blue">Ma localisation</span>
+                </button>
                 {citySuggestions.map((c) => (
                   <button
                     key={`${c.name}-${c.lat}-${c.lon}`}
@@ -205,6 +215,7 @@ export function SearchBars() {
                       setCityLat(c.lat);
                       setCityLon(c.lon);
                       setShowCitySuggestions(false);
+                      setCityFocused(false);
                     }}
                     className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors text-sm"
                   >
@@ -216,20 +227,6 @@ export function SearchBars() {
                 ))}
               </div>
             )}
-
-            {/* Bouton localisation GPS */}
-            <button
-              onClick={handleGetLocation}
-              disabled={isLoadingLocation}
-              className="flex items-center justify-center h-5 w-5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer shrink-0 disabled:opacity-40"
-              title="Utiliser ma localisation"
-            >
-              {isLoadingLocation ? (
-                <Loader className="h-4 w-4 animate-spin" />
-              ) : (
-                <MapPin className="h-4 w-4" />
-              )}
-            </button>
           </div>
 
           {/* Bouton recherche - intégré dans la barre */}

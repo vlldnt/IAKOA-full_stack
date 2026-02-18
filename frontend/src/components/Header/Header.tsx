@@ -48,7 +48,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
                 className="flex lg:hidden items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Supprimer les filtres</span>
+                <span className="hidden md:inline">Supprimer les filtres</span>
               </button>
             )}
           </div>
