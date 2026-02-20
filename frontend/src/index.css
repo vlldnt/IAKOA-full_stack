@@ -7,3 +7,12 @@
 body {
   font-family: Calibri, Arial, sans-serif;
 }
+
+@keyframes user-breathe {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+
+.user-breathe {
+  animation: user-breathe 2s ease-in-out infinite;
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -20,16 +20,19 @@ L.Icon.Default.mergeOptions({
 function createEventIcon(color: string): L.DivIcon {
   return L.divIcon({
     className: '',
-    html: `<div style="width:14px;height:14px;background:${color};border:2.5px solid white;border-radius:50%;box-shadow:0 1px 5px rgba(0,0,0,0.35)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -10],
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="28" viewBox="0 0 22 28">
+      <path d="M11 0C5 0 0 5 0 11c0 8.5 11 17 11 17S22 19.5 22 11C22 5 17 0 11 0z" fill="${color}" stroke="white" stroke-width="2"/>
+      <circle cx="11" cy="10.5" r="4" fill="white" opacity="0.85"/>
+    </svg>`,
+    iconSize: [22, 28],
+    iconAnchor: [11, 28],
+    popupAnchor: [0, -28],
   });
 }
 
 const USER_ICON = L.divIcon({
   className: '',
-  html: `<div style="width:16px;height:16px;background:#2563EB;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,0.55)"></div>`,
+  html: `<div class="user-breathe" style="width:16px;height:16px;background:white;border:3px solid #2563EB;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,0.6)"></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8],
 });
@@ -100,6 +103,9 @@ export default function MapPage() {
   const [events, setEvents] = useState<EventType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(80);
+  const [geolocating, setGeolocating] = useState(
+    !filters.latitude || !filters.longitude,
+  );
   const mapRef = useRef<L.Map | null>(null);
 
   const userPosition: [number, number] | null =
@@ -107,9 +113,8 @@ export default function MapPage() {
       ? [filters.latitude, filters.longitude]
       : null;
 
-  // France centre par défaut, zoom pays si pas de position
   const mapCenter: [number, number] = userPosition ?? [46.603354, 1.888334];
-  const mapZoom = userPosition ? getZoomForRadius(filters.radius, device) : 6;
+  const mapZoom = getZoomForRadius(filters.radius, device);
 
   // Track header height for the fixed map container
   useEffect(() => {
@@ -124,16 +129,24 @@ export default function MapPage() {
 
   // Request geolocation once on mount if position not already set
   useEffect(() => {
-    if (!filters.latitude && !filters.longitude && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => updatePosition(pos.coords.latitude, pos.coords.longitude),
-        () => {},
-      );
+    if (!filters.latitude && !filters.longitude) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            updatePosition(pos.coords.latitude, pos.coords.longitude);
+            setGeolocating(false);
+          },
+          () => setGeolocating(false),
+        );
+      } else {
+        setGeolocating(false);
+      }
     }
   }, []);
 
   // Fetch events whenever filters change
   const loadEvents = useCallback(async () => {
+    if (!filters.latitude || !filters.longitude) return;
     setIsLoading(true);
     try {
       const result = await fetchEventsPaginated(1, 500, {
@@ -179,6 +192,33 @@ export default function MapPage() {
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
+
+  // Shared wrapper for loading / empty states
+  const emptyContainer = (children: React.ReactNode) => (
+    <div
+      className="fixed left-0 right-0 bottom-16 xl:bottom-0 flex items-center justify-center bg-gray-50"
+      style={{ top: headerHeight }}
+    >
+      {children}
+    </div>
+  );
+
+  if (geolocating) {
+    return emptyContainer(
+      <span className="loading loading-spinner loading-lg text-iakoa-blue" />,
+    );
+  }
+
+  if (!userPosition) {
+    return emptyContainer(
+      <div className="flex flex-col items-center gap-3 text-center px-6">
+        <LocateFixed className="h-10 w-10 text-gray-300" />
+        <p className="text-gray-500 text-sm font-medium">
+          Activez la géolocalisation ou sélectionnez une ville pour voir la carte.
+        </p>
+      </div>,
+    );
+  }
 
   return (
     <>
@@ -273,7 +313,7 @@ export default function MapPage() {
         </MapContainer>
 
         {/* Floating UI — bottom-right overlay */}
-        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2 pointer-events-none">
+        <div className="absolute bottom-4 right-4 z-1000 flex flex-col items-end gap-2 pointer-events-none">
           {/* Zoom + / - */}
           <div className="pointer-events-auto flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
             <button
