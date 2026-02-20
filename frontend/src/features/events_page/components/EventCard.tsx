@@ -5,7 +5,7 @@ import {
   getCategoryLabel,
   getCategoryHexColor,
   getCategoryShadowColor,
-} from '@/lib/constants/event-category.config';
+} from '@/lib/constants/filter-categories';
 
 interface EventCardProps {
   event: EventType;

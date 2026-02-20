@@ -25,8 +25,7 @@ import {
   Wine,
   Leaf,
 } from 'lucide-react';
-import { FILTER_CATEGORY_GROUPS } from '@/lib/constants/filter-categories';
-import { getCategoryHexColor } from '@/lib/constants/event-category.config';
+import { FILTER_CATEGORY_GROUPS, getCategoryHexColor } from '@/lib/constants/filter-categories';
 import { MapPreview } from './MapPreview';
 import iakoaLogo from '@/assets/logo-iakoa.svg';
 import { useFilters } from '@/features/events_page/FilterContext';
