@@ -190,6 +190,7 @@ export function FilterMenu({
   const [cityFocused, setCityFocused] = useState(false);
   const hoveredGroupRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverEnterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -532,9 +533,13 @@ export function FilterMenu({
                       <button
                         onMouseEnter={() => {
                           if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                          setHoveredGroup(group.id);
+                          if (hoverEnterTimeoutRef.current) clearTimeout(hoverEnterTimeoutRef.current);
+                          hoverEnterTimeoutRef.current = setTimeout(() => {
+                            setHoveredGroup(group.id);
+                          }, 120);
                         }}
                         onMouseLeave={() => {
+                          if (hoverEnterTimeoutRef.current) clearTimeout(hoverEnterTimeoutRef.current);
                           hoverTimeoutRef.current = setTimeout(() => {
                             setHoveredGroup(null);
                           }, 800);
