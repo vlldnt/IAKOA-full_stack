@@ -34,14 +34,33 @@ const USER_ICON = L.divIcon({
   iconAnchor: [8, 8],
 });
 
-function getZoomForRadius(radius: number): number {
-  if (radius <= 1) return 14;
-  if (radius <= 2) return 13;
-  if (radius <= 5) return 12;
-  if (radius <= 10) return 11;
-  if (radius <= 25) return 9;
-  if (radius <= 50) return 8;
-  return 7;
+type DeviceType = 'mobile' | 'tablet' | 'desktop';
+
+function useDeviceType(): DeviceType {
+  const getDevice = (): DeviceType => {
+    const w = window.innerWidth;
+    if (w < 768) return 'mobile';
+    if (w < 1024) return 'tablet';
+    return 'desktop';
+  };
+  const [device, setDevice] = useState<DeviceType>(getDevice);
+  useEffect(() => {
+    const handler = () => setDevice(getDevice());
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return device;
+}
+
+function getZoomForRadius(radius: number, device: DeviceType): number {
+  // Desktop base values
+  if (radius <= 1) return device === 'mobile' ? 14 : 15;
+  if (radius <= 2) return device === 'mobile' ? 13 : 14;
+  if (radius <= 5) return device === 'mobile' ? 12 : 13;
+  if (radius <= 10) return device === 'mobile' ? 11 : 12;
+  if (radius <= 25) return device === 'desktop' ? 11 : 10;
+  if (radius <= 50) return device === 'desktop' ? 10 : 9;
+  return device === 'desktop' ? 9 : 8;
 }
 
 // Child component: flies to new position when filters change
@@ -73,8 +92,11 @@ function formatPrice(pricing: number): string {
   return `${(pricing / 100).toFixed(2).replace('.', ',')} €`;
 }
 
+const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
+
 export default function MapPage() {
-  const { filters, updatePosition } = useFilters();
+  const { filters, updatePosition, updateRadius } = useFilters();
+  const device = useDeviceType();
   const [events, setEvents] = useState<EventType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(80);
@@ -87,7 +109,7 @@ export default function MapPage() {
 
   // France centre par défaut, zoom pays si pas de position
   const mapCenter: [number, number] = userPosition ?? [46.603354, 1.888334];
-  const mapZoom = userPosition ? getZoomForRadius(filters.radius) : 6;
+  const mapZoom = userPosition ? getZoomForRadius(filters.radius, device) : 6;
 
   // Track header height for the fixed map container
   useEffect(() => {
@@ -252,18 +274,6 @@ export default function MapPage() {
 
         {/* Floating UI — bottom-right overlay */}
         <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2 pointer-events-none">
-          {/* Events count / loading pill */}
-          <div className="pointer-events-auto bg-white rounded-full px-3 py-1.5 shadow-lg text-xs text-gray-600 flex items-center gap-1.5">
-            {isLoading ? (
-              <>
-                <span className="loading loading-spinner loading-xs" />
-                Chargement...
-              </>
-            ) : (
-              `${events.length} événement${events.length !== 1 ? 's' : ''}`
-            )}
-          </div>
-
           {/* Zoom + / - */}
           <div className="pointer-events-auto flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
             <button
@@ -282,16 +292,56 @@ export default function MapPage() {
             </button>
           </div>
 
-          {/* Recentrer */}
-          {userPosition && (
-            <button
-              onClick={() => mapRef.current?.flyTo(userPosition, mapZoom, { duration: 1 })}
-              className="pointer-events-auto flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-              title="Recentrer"
-            >
-              <LocateFixed className="h-4 w-4 text-iakoa-blue" />
-            </button>
-          )}
+          {/* Bottom row: events count + slider + recentrer */}
+          <div className="flex items-center gap-2">
+            {/* Events count / loading pill */}
+            <div className="pointer-events-auto bg-white rounded-full px-3 py-1.5 shadow-lg text-xs text-gray-600 flex items-center gap-1.5 whitespace-nowrap">
+              {isLoading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Chargement...
+                </>
+              ) : (
+                `${events.length} événement${events.length !== 1 ? 's' : ''}`
+              )}
+            </div>
+
+            {/* Radius slider */}
+            <div className="pointer-events-auto bg-white rounded-xl shadow-lg px-3 py-2 flex flex-col gap-1 w-40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 font-medium">Rayon</span>
+                <span className="text-xs font-bold text-iakoa-blue">{filters.radius} km</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="6"
+                value={RADIUS_PRESETS.indexOf(filters.radius)}
+                onChange={(e) => updateRadius(RADIUS_PRESETS[Number(e.target.value)])}
+                className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-iakoa-blue"
+                style={{
+                  background: `linear-gradient(to right, #2563EB 0%, #2563EB ${(RADIUS_PRESETS.indexOf(filters.radius) / 6) * 100}%, #E5E7EB ${(RADIUS_PRESETS.indexOf(filters.radius) / 6) * 100}%, #E5E7EB 100%)`,
+                }}
+              />
+              {/* Labels alignés sur les encoches du slider (offset = demi-largeur du thumb ~6px) */}
+              <div className="grid grid-cols-7 text-[9px] text-gray-400">
+                {RADIUS_PRESETS.map((p) => (
+                  <span key={p} className="text-center">{p}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Recentrer */}
+            {userPosition && (
+              <button
+                onClick={() => mapRef.current?.flyTo(userPosition, mapZoom, { duration: 1 })}
+                className="pointer-events-auto flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                title="Recentrer"
+              >
+                <LocateFixed className="h-4 w-4 text-iakoa-blue" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </>
