@@ -1,4 +1,4 @@
-import { Calendar, Euro, Clock } from 'lucide-react';
+import { Calendar, Euro, Clock, MapPin, Share2, Heart } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { EventType } from '@/lib/types/EventType';
 import {
@@ -84,7 +84,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
       onClick={() => onClick?.(event)}
     >
       <figure
-        className={`overflow-hidden transition-all duration-200 ${
+        className={`relative overflow-hidden transition-all duration-200 ${
           titleLines > 1 ? 'h-48' : 'h-60'
         }`}
       >
@@ -93,6 +93,26 @@ export function EventCard({ event, onClick }: EventCardProps) {
           alt={event.name}
           className="w-full h-full object-cover"
         />
+        {/* Actions flottantes */}
+        <div
+          className="absolute top-2 right-2 flex gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            disabled
+            title="Partager (bientôt disponible)"
+            className="flex items-center justify-center w-8 h-8 bg-white/80 rounded-full cursor-not-allowed text-gray-400"
+          >
+            <Share2 size={14} />
+          </button>
+          <button
+            disabled
+            title="Ajouter aux favoris (bientôt disponible)"
+            className="flex items-center justify-center w-8 h-8 bg-white/80 rounded-full cursor-not-allowed text-gray-400"
+          >
+            <Heart size={14} />
+          </button>
+        </div>
       </figure>
 
       <div className="card-body p-4 gap-2 flex-1 flex flex-col justify-between">
@@ -121,21 +141,26 @@ export function EventCard({ event, onClick }: EventCardProps) {
         </div>
 
         {/* Infos */}
-        <div className="flex items-end justify-between gap-2">
-          <div className="space-y-1 text-xs flex-1">
+        <div className="flex flex-col gap-1 text-xs">
+          <div className="flex items-center gap-2">
+            <MapPin size={14} className="shrink-0 text-gray-400" />
+            <span className="truncate text-gray-500">
+              {event.location.postalCode} {event.location.city}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Calendar size={14} className="shrink-0" />
               <span>{formattedDate}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="shrink-0" />
-              <span>{remainingTime}</span>
+            <div className="flex items-center gap-1 whitespace-nowrap shrink-0">
+              <Euro size={14} />
+              <span className="font-semibold">{priceText}</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-1 whitespace-nowrap shrink-0">
-            <Euro size={14} />
-            <span className="text-xs font-semibold">{priceText}</span>
+          <div className="flex items-center gap-2 text-gray-400">
+            <Clock size={14} className="shrink-0" />
+            <span>{remainingTime}</span>
           </div>
         </div>
       </div>

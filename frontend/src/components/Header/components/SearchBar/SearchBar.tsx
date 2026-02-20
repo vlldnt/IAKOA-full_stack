@@ -28,7 +28,11 @@ export function SearchBars() {
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
   const [cityFocused, setCityFocused] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const skipDropdownRef = useRef(false);
 
   // Synchroniser les filtres globaux avec l'état local
   useEffect(() => {
@@ -64,6 +68,55 @@ export function SearchBars() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+
+  // Reset highlight when suggestions list changes
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [citySuggestions]);
+
+  const selectSuggestion = (c: CityResult) => {
+    const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
+    setCity(cityText);
+    setCityLat(c.lat);
+    setCityLon(c.lon);
+    setShowCitySuggestions(false);
+    setCityFocused(false);
+    setHighlightedIndex(-1);
+    // Refocus input without reopening dropdown, then search is ready on Enter
+    skipDropdownRef.current = true;
+    cityInputRef.current?.focus();
+  };
+
+  const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const total = citySuggestions.length;
+    const dropdownOpen = cityFocused || showCitySuggestions;
+
+    if (e.key === 'ArrowDown') {
+      if (!dropdownOpen || total === 0) return;
+      e.preventDefault();
+      setHighlightedIndex((prev) => Math.min(prev + 1, total - 1));
+    } else if (e.key === 'ArrowUp') {
+      if (!dropdownOpen || total === 0) return;
+      e.preventDefault();
+      setHighlightedIndex((prev) => Math.max(prev - 1, -1));
+    } else if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && citySuggestions[highlightedIndex]) {
+        e.preventDefault();
+        selectSuggestion(citySuggestions[highlightedIndex]);
+        // Immediately trigger search with the selected city
+        const c = citySuggestions[highlightedIndex];
+        const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
+        updateKeyword(keyword);
+        updateCity(cityText, c.lat, c.lon);
+      } else {
+        handleSearch();
+      }
+    } else if (e.key === 'Escape') {
+      setShowCitySuggestions(false);
+      setCityFocused(false);
+      setHighlightedIndex(-1);
     }
   };
 
@@ -116,9 +169,14 @@ export function SearchBars() {
     }, 300);
   };
 
+  const showGeoError = (msg: string) => {
+    setGeoError(msg);
+    setTimeout(() => setGeoError(null), 3500);
+  };
+
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      alert("La géolocalisation n'est pas supportée par votre navigateur");
+      showGeoError("Géolocalisation non supportée par votre navigateur");
       return;
     }
 
@@ -129,15 +187,20 @@ export function SearchBars() {
         setCityLat(latitude);
         setCityLon(longitude);
       },
-      (error) => {
-        console.error('Erreur de géolocalisation:', error);
-        alert('Impossible de récupérer votre localisation');
+      () => {
+        showGeoError('Localisation refusée — vérifiez les permissions du navigateur');
       },
     );
   };
 
   return (
     <div className="w-full relative">
+      {/* Erreur géolocalisation */}
+      {geoError && (
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-1.5 rounded-full shadow whitespace-nowrap">
+          {geoError}
+        </div>
+      )}
       <div className="flex items-center justify-center gap-2 w-full">
         {/* Barre de recherche */}
         <div className="flex items-center bg-gray-100 rounded-full px-3 py-2 lg:px-5 lg:py-2 gap-2 flex-1 max-w-[calc(100vw-6rem)] md:max-w-none lg:flex-none lg:max-w-5xl">
@@ -168,6 +231,7 @@ export function SearchBars() {
           {/* Champ ville */}
           <div className="relative flex-1 min-w-0 lg:flex-none lg:w-64">
             <input
+              ref={cityInputRef}
               type="text"
               placeholder="Ville..."
               className={`bg-transparent outline-none text-sm w-full ${city === 'Ma localisation' ? 'text-iakoa-blue font-bold' : ''}`}
@@ -177,10 +241,15 @@ export function SearchBars() {
                 setCity(value);
                 setCityLat(undefined);
                 setCityLon(undefined);
+                setHighlightedIndex(-1);
                 handleCitySearch(value);
               }}
-              onKeyDown={handleKeyDown}
+              onKeyDown={handleCityKeyDown}
               onFocus={() => {
+                if (skipDropdownRef.current) {
+                  skipDropdownRef.current = false;
+                  return;
+                }
                 setCityFocused(true);
                 if (city.length >= 2) searchCities(city);
               }}
@@ -188,7 +257,8 @@ export function SearchBars() {
                 setTimeout(() => {
                   setShowCitySuggestions(false);
                   setCityFocused(false);
-                }, 200);
+                  setHighlightedIndex(-1);
+                }, 150);
               }}
             />
 
@@ -206,18 +276,19 @@ export function SearchBars() {
                   <MapPin className="h-3.5 w-3.5 text-iakoa-blue shrink-0" />
                   <span className="font-bold text-sm text-iakoa-blue">Ma localisation</span>
                 </button>
-                {citySuggestions.map((c) => (
+                {citySuggestions.map((c, index) => (
                   <button
                     key={`${c.name}-${c.lat}-${c.lon}`}
-                    onClick={() => {
-                      const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
-                      setCity(cityText);
-                      setCityLat(c.lat);
-                      setCityLon(c.lon);
-                      setShowCitySuggestions(false);
-                      setCityFocused(false);
+                    onMouseDown={(e) => {
+                      // Prevent input blur before onClick fires
+                      e.preventDefault();
+                      selectSuggestion(c);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors text-sm"
+                    className={`w-full text-left px-3 py-2 transition-colors text-sm ${
+                      index === highlightedIndex
+                        ? 'bg-blue-50 text-iakoa-blue'
+                        : 'hover:bg-gray-100'
+                    }`}
                   >
                     <span className="font-medium">{c.name}</span>
                     {c.postcode && (

@@ -188,6 +188,7 @@ export function FilterMenu({
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
   const [cityFocused, setCityFocused] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   const hoveredGroupRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverEnterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -212,9 +213,14 @@ export function FilterMenu({
     }
   }, [filters.latitude, filters.longitude]);
 
+  const showGeoError = (msg: string) => {
+    setGeoError(msg);
+    setTimeout(() => setGeoError(null), 3500);
+  };
+
   const handleGeolocation = () => {
     if (!navigator.geolocation) {
-      alert("La géolocalisation n'est pas disponible dans votre navigateur");
+      showGeoError("Géolocalisation non supportée par votre navigateur");
       return;
     }
 
@@ -228,9 +234,7 @@ export function FilterMenu({
         onCityChange?.('Ma localisation');
       },
       () => {
-        alert(
-          "Impossible d'accéder à votre localisation. Vérifiez les permissions.",
-        );
+        showGeoError("Localisation refusée — vérifiez les permissions du navigateur");
       },
     );
   };
@@ -413,6 +417,13 @@ export function FilterMenu({
                     }, 200);
                   }}
                 />
+
+                {/* Erreur géolocalisation */}
+                {geoError && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-200 bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-3 py-2 rounded-lg shadow">
+                    {geoError}
+                  </div>
+                )}
 
                 {/* Dropdown : Ma localisation + suggestions villes */}
                 {(cityFocused || showCitySuggestions) && (
