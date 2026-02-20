@@ -9,6 +9,7 @@ import {
 
 interface EventCardProps {
   event: EventType;
+  onClick?: (event: EventType) => void;
 }
 
 function getRemainingTime(dateString: string) {
@@ -28,7 +29,7 @@ function getRemainingTime(dateString: string) {
   return `Aujourd'hui`;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onClick }: EventCardProps) {
   const [isActive, setIsActive] = useState(false);
   const [titleLines, setTitleLines] = useState(1);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -80,6 +81,7 @@ export function EventCard({ event }: EventCardProps) {
       }}
       onMouseOver={() => setIsActive(true)}
       onMouseLeave={() => setIsActive(false)}
+      onClick={() => onClick?.(event)}
     >
       <figure
         className={`overflow-hidden transition-all duration-200 ${

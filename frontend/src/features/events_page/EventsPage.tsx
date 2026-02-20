@@ -1,7 +1,9 @@
 import { EventCard } from './components/EventCard';
+import { EventModal } from './components/EventModal';
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useEvents } from './EventContext';
 import { useFilters } from './FilterContext';
+import type { EventType } from '@/lib/types/EventType';
 
 interface EventsPageProps {
   text?: string;
@@ -17,6 +19,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
   const { filters, updatePosition } = useFilters();
   const [currentPage, setCurrentPage] = useState(1);
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
   const itemsPerPage = 12;
 
   useEffect(() => {
@@ -128,6 +131,9 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
   return (
     <div className="w-full min-h-screen bg-white pt-30 md:pt-4 pb-8 md:pb-8 relative">
+      {selectedEvent && (
+        <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
       <div ref={contentRef} className="w-full lg:w-[95%] xl:w-[90%] [@media(min-width:1828px)]:w-[80%] mx-auto">
         {showCards ? (
           <div className="w-full">
@@ -149,7 +155,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
                              place-items-center"
                 >
                   {events.map((event) => (
-                    <EventCard key={event.id} event={event} />
+                    <EventCard key={event.id} event={event} onClick={setSelectedEvent} />
                   ))}
                 </div>
 

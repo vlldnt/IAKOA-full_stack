@@ -16,6 +16,14 @@ export interface Media {
   type: string;
 }
 
+export interface SocialNetworks {
+  facebook?: string;
+  instagram?: string;
+  x?: string;
+  youtube?: string;
+  tiktok?: string;
+}
+
 export interface EventType {
   id?: string;
   name: string;
@@ -24,7 +32,12 @@ export interface EventType {
   pricing: number;
   location: Location;
   companyId: string;
-  company?: { name: string; ownerId: string };
+  company?: {
+    name: string;
+    ownerId: string;
+    website?: string;
+    socialNetworks?: SocialNetworks;
+  };
   website: string;
   categories: string[];
   media: Media[];

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,6 +7,7 @@ import { useFilters } from '@/features/events_page/FilterContext';
 import { fetchEventsPaginated } from '@/lib/services/eventsServices';
 import type { EventType } from '@/lib/types/EventType';
 import { getCategoryHexColor } from '@/lib/constants/filter-categories';
+import { EventModal } from '@/features/events_page/components/EventModal';
 
 // Fix leaflet icon paths with bundlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,7 +57,6 @@ function useDeviceType(): DeviceType {
 }
 
 function getZoomForRadius(radius: number, device: DeviceType): number {
-  // Desktop base values
   if (radius <= 1) return device === 'mobile' ? 14 : 15;
   if (radius <= 2) return device === 'mobile' ? 13 : 14;
   if (radius <= 5) return device === 'mobile' ? 12 : 13;
@@ -66,7 +66,6 @@ function getZoomForRadius(radius: number, device: DeviceType): number {
   return device === 'desktop' ? 9 : 8;
 }
 
-// Child component: flies to new position when filters change
 function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   const prevRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
@@ -82,25 +81,13 @@ function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }
   return null;
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-function formatPrice(pricing: number): string {
-  if (pricing === 0) return 'Gratuit';
-  return `${(pricing / 100).toFixed(2).replace('.', ',')} €`;
-}
-
 const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 
 export default function MapPage() {
   const { filters, updatePosition, updateRadius } = useFilters();
   const device = useDeviceType();
   const [events, setEvents] = useState<EventType[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(80);
   const [geolocating, setGeolocating] = useState(
@@ -194,7 +181,7 @@ export default function MapPage() {
   }, [loadEvents]);
 
   // Shared wrapper for loading / empty states
-  const emptyContainer = (children: React.ReactNode) => (
+  const emptyContainer = (children: ReactNode) => (
     <div
       className="fixed left-0 right-0 bottom-16 xl:bottom-0 flex items-center justify-center bg-gray-50"
       style={{ top: headerHeight }}
@@ -222,6 +209,11 @@ export default function MapPage() {
 
   return (
     <>
+      {/* Event detail modal */}
+      {selectedEvent && (
+        <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+      )}
+
       {/* Fixed map container — accounts for fixed header (top) and mobile nav (bottom) */}
       <div
         className="fixed left-0 right-0 bottom-16 xl:bottom-0"
@@ -273,41 +265,8 @@ export default function MapPage() {
                 key={event.id}
                 position={[lat, lng]}
                 icon={createEventIcon(color)}
-              >
-                <Popup>
-                  <div style={{ minWidth: 180, maxWidth: 220 }}>
-                    {/* Category color stripe */}
-                    <div
-                      style={{
-                        height: 3,
-                        background: color,
-                        borderRadius: 2,
-                        marginBottom: 8,
-                      }}
-                    />
-                    <p
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 13,
-                        margin: '0 0 4px',
-                        lineHeight: 1.3,
-                        color: '#111827',
-                      }}
-                    >
-                      {event.name}
-                    </p>
-                    <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 2px' }}>
-                      📅 {formatDate(event.date)}
-                    </p>
-                    <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 6px' }}>
-                      📍 {event.location.city}
-                    </p>
-                    <p style={{ fontSize: 12, fontWeight: 600, color, margin: 0 }}>
-                      {formatPrice(event.pricing)}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
+                eventHandlers={{ click: () => setSelectedEvent(event) }}
+              />
             );
           })}
         </MapContainer>
@@ -363,7 +322,6 @@ export default function MapPage() {
                   background: `linear-gradient(to right, #2563EB 0%, #2563EB ${(RADIUS_PRESETS.indexOf(filters.radius) / 6) * 100}%, #E5E7EB ${(RADIUS_PRESETS.indexOf(filters.radius) / 6) * 100}%, #E5E7EB 100%)`,
                 }}
               />
-              {/* Labels alignés sur les encoches du slider (offset = demi-largeur du thumb ~6px) */}
               <div className="grid grid-cols-7 text-[9px] text-gray-400">
                 {RADIUS_PRESETS.map((p) => (
                   <span key={p} className="text-center">{p}</span>
