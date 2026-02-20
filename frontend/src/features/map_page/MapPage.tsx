@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Sliders } from 'lucide-react';
+import { Plus, Minus, LocateFixed } from 'lucide-react';
 import { useFilters } from '@/features/events_page/FilterContext';
-import { FilterMenu, type FilterState } from '@/components/Header/components/SearchBar/FilterMenu';
 import { fetchEventsPaginated } from '@/lib/services/eventsServices';
 import type { EventType } from '@/lib/types/EventType';
 import { getCategoryHexColor } from '@/lib/constants/filter-categories';
@@ -78,11 +77,8 @@ export default function MapPage() {
   const { filters, updatePosition } = useFilters();
   const [events, setEvents] = useState<EventType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const [keyword, setKeyword] = useState(filters.keyword);
-  const [city, setCity] = useState(filters.city);
   const [headerHeight, setHeaderHeight] = useState(80);
-  const [appliedFilters, setAppliedFilters] = useState<FilterState | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
   const userPosition: [number, number] | null =
     filters.latitude && filters.longitude
@@ -92,12 +88,6 @@ export default function MapPage() {
   // France centre par défaut, zoom pays si pas de position
   const mapCenter: [number, number] = userPosition ?? [46.603354, 1.888334];
   const mapZoom = userPosition ? getZoomForRadius(filters.radius) : 6;
-
-  // Sync keyword/city from global filters (e.g. after reset)
-  useEffect(() => {
-    setKeyword(filters.keyword);
-    setCity(filters.city);
-  }, [filters.keyword, filters.city]);
 
   // Track header height for the fixed map container
   useEffect(() => {
@@ -168,11 +158,6 @@ export default function MapPage() {
     loadEvents();
   }, [loadEvents]);
 
-  const filterCount = appliedFilters
-    ? (appliedFilters.selectedCategories.length > 0 ? 1 : 0) +
-      (appliedFilters.radius !== 2 ? 1 : 0)
-    : 0;
-
   return (
     <>
       {/* Fixed map container — accounts for fixed header (top) and mobile nav (bottom) */}
@@ -181,10 +166,11 @@ export default function MapPage() {
         style={{ top: headerHeight }}
       >
         <MapContainer
+          ref={mapRef}
           center={mapCenter}
           zoom={mapZoom}
           className="w-full h-full"
-          zoomControl
+          zoomControl={false}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -278,32 +264,36 @@ export default function MapPage() {
             )}
           </div>
 
-          {/* Filter button */}
-          <button
-            onClick={() => setIsFilterMenuOpen(true)}
-            className="pointer-events-auto relative flex items-center justify-center w-12 h-12 rounded-full bg-linear-to-br from-iakoa-blue to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg transition-all duration-200"
-            title="Filtres"
-          >
-            <Sliders className="h-5 w-5 text-white" />
-            {filterCount > 0 && (
-              <span className="absolute -top-2 -right-2 w-5 h-5 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow">
-                {filterCount}
-              </span>
-            )}
-          </button>
+          {/* Zoom + / - */}
+          <div className="pointer-events-auto flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
+            <button
+              onClick={() => mapRef.current?.zoomIn()}
+              className="flex items-center justify-center w-10 h-10 hover:bg-gray-50 transition-colors border-b border-gray-100"
+              title="Zoom +"
+            >
+              <Plus className="h-4 w-4 text-gray-700" />
+            </button>
+            <button
+              onClick={() => mapRef.current?.zoomOut()}
+              className="flex items-center justify-center w-10 h-10 hover:bg-gray-50 transition-colors"
+              title="Zoom -"
+            >
+              <Minus className="h-4 w-4 text-gray-700" />
+            </button>
+          </div>
+
+          {/* Recentrer */}
+          {userPosition && (
+            <button
+              onClick={() => mapRef.current?.flyTo(userPosition, mapZoom, { duration: 1 })}
+              className="pointer-events-auto flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+              title="Recentrer"
+            >
+              <LocateFixed className="h-4 w-4 text-iakoa-blue" />
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Filter menu — same as in SearchBar */}
-      <FilterMenu
-        isOpen={isFilterMenuOpen}
-        onClose={() => setIsFilterMenuOpen(false)}
-        onApply={(f) => setAppliedFilters(f)}
-        keyword={keyword}
-        city={city}
-        onKeywordChange={setKeyword}
-        onCityChange={setCity}
-      />
     </>
   );
 }

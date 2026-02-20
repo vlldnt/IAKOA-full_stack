@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { LocateFixed } from 'lucide-react';
 
 interface MapPreviewProps {
   radius: number;
@@ -35,6 +36,7 @@ function calculateZoomForRadius(radius: number): number {
 
 export function MapPreview({ radius, userPosition }: MapPreviewProps) {
   const [position, setPosition] = useState<[number, number] | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const zoom = calculateZoomForRadius(radius);
 
   useEffect(() => {
@@ -58,8 +60,9 @@ export function MapPreview({ radius, userPosition }: MapPreviewProps) {
   }
 
   return (
-    <div className="w-90 h-90 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto">
+    <div className="w-90 h-90 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto relative">
       <MapContainer
+        ref={mapRef}
         center={position}
         zoom={zoom}
         style={{ width: '100%', height: '100%' }}
@@ -71,6 +74,7 @@ export function MapPreview({ radius, userPosition }: MapPreviewProps) {
         attributionControl={false}
         key={`${position[0]}-${position[1]}-${zoom}`}
       >
+
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -97,6 +101,15 @@ export function MapPreview({ radius, userPosition }: MapPreviewProps) {
           </Popup>
         </Marker>
       </MapContainer>
+
+      {/* Bouton recentrer */}
+      <button
+        onClick={() => mapRef.current?.flyTo(position, zoom, { duration: 0.6 })}
+        className="absolute bottom-2 right-2 z-1000 flex items-center justify-center w-7 h-7 bg-white rounded-md shadow-md hover:bg-gray-50 transition-colors"
+        title="Recentrer"
+      >
+        <LocateFixed className="w-4 h-4 text-iakoa-blue" />
+      </button>
     </div>
   );
 }
