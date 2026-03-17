@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, MapPin, Sliders, X } from 'lucide-react';
 import { FilterMenu, type FilterState } from './FilterMenu';
-import { useFilters } from '@/features/events_page/FilterContext';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { setKeyword, setCity, resetFilters } from '@/store/slices/filtersSlice';
 
-// Type pour les résultats de ville
+// Type pour les résultats de l'API géographique française
 interface CityResult {
   name: string;
   region: string;
@@ -13,17 +14,18 @@ interface CityResult {
 }
 
 // Barre de recherche avec deux champs: mots-clés et ville
-// Utilise les icônes lucide-react au lieu de SVG inline
+// Gère l'autocomplétion des villes via l'API geo.api.gouv.fr
 export function SearchBars() {
-  const { filters, updateKeyword, updateCity, resetFilters } = useFilters();
-  const [keyword, setKeyword] = useState(filters.keyword);
-  const [city, setCity] = useState(filters.city);
+  const dispatch = useAppDispatch();
+  const filters = useAppSelector((state) => state.filters);
+
+  // État local UI pour les champs (synchronisé avec Redux à la soumission)
+  const [keyword, setLocalKeyword] = useState(filters.keyword);
+  const [city, setLocalCity] = useState(filters.city);
   const [cityLat, setCityLat] = useState<number | undefined>(filters.latitude);
   const [cityLon, setCityLon] = useState<number | undefined>(filters.longitude);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState<FilterState | null>(
-    null,
-  );
+  const [appliedFilters, setAppliedFilters] = useState<FilterState | null>(null);
   const [showFilterTooltip, setShowFilterTooltip] = useState(false);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
@@ -34,10 +36,10 @@ export function SearchBars() {
   const cityInputRef = useRef<HTMLInputElement>(null);
   const skipDropdownRef = useRef(false);
 
-  // Synchroniser les filtres globaux avec l'état local
+  // Synchroniser les filtres globaux Redux avec l'état local
   useEffect(() => {
-    setKeyword(filters.keyword);
-    setCity(filters.city);
+    setLocalKeyword(filters.keyword);
+    setLocalCity(filters.city);
     setCityLat(filters.latitude);
     setCityLon(filters.longitude);
   }, [filters.keyword, filters.city, filters.latitude, filters.longitude]);
@@ -51,18 +53,20 @@ export function SearchBars() {
     || filters.dateFrom || filters.dateTo || filters.priceMin !== undefined
     || filters.priceMax !== undefined || filters.isFree);
 
+  // Réinitialiser tous les filtres (local + Redux)
   const handleClearAll = () => {
-    setKeyword('');
-    setCity('');
+    setLocalKeyword('');
+    setLocalCity('');
     setCityLat(undefined);
     setCityLon(undefined);
     setAppliedFilters(null);
-    resetFilters();
+    dispatch(resetFilters());
   };
 
+  // Soumettre la recherche vers Redux
   const handleSearch = () => {
-    updateKeyword(keyword);
-    updateCity(city, cityLat, cityLon);
+    dispatch(setKeyword(keyword));
+    dispatch(setCity({ city, lat: cityLat, lon: cityLon }));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -71,24 +75,25 @@ export function SearchBars() {
     }
   };
 
-  // Reset highlight when suggestions list changes
+  // Réinitialiser l'index de surbrillance quand les suggestions changent
   useEffect(() => {
     setHighlightedIndex(-1);
   }, [citySuggestions]);
 
+  // Sélectionner une suggestion de ville
   const selectSuggestion = (c: CityResult) => {
     const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
-    setCity(cityText);
+    setLocalCity(cityText);
     setCityLat(c.lat);
     setCityLon(c.lon);
     setShowCitySuggestions(false);
     setCityFocused(false);
     setHighlightedIndex(-1);
-    // Refocus input without reopening dropdown, then search is ready on Enter
     skipDropdownRef.current = true;
     cityInputRef.current?.focus();
   };
 
+  // Navigation clavier dans les suggestions de ville
   const handleCityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const total = citySuggestions.length;
     const dropdownOpen = cityFocused || showCitySuggestions;
@@ -105,11 +110,10 @@ export function SearchBars() {
       if (highlightedIndex >= 0 && citySuggestions[highlightedIndex]) {
         e.preventDefault();
         selectSuggestion(citySuggestions[highlightedIndex]);
-        // Immediately trigger search with the selected city
         const c = citySuggestions[highlightedIndex];
         const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
-        updateKeyword(keyword);
-        updateCity(cityText, c.lat, c.lon);
+        dispatch(setKeyword(keyword));
+        dispatch(setCity({ city: cityText, lat: c.lat, lon: c.lon }));
       } else {
         handleSearch();
       }
@@ -126,10 +130,9 @@ export function SearchBars() {
 
   const handleApplyFilters = (filters: FilterState) => {
     setAppliedFilters(filters);
-    // TODO: Appliquer les filtres à la recherche
-    console.log('Filtres appliqués:', filters);
   };
 
+  // Recherche de villes via l'API géographique française (debounce 300ms)
   const searchCities = async (query: string) => {
     if (query.length < 2) {
       setShowCitySuggestions(false);
@@ -174,6 +177,7 @@ export function SearchBars() {
     setTimeout(() => setGeoError(null), 3500);
   };
 
+  // Utiliser la géolocalisation du navigateur
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       showGeoError("Géolocalisation non supportée par votre navigateur");
@@ -183,7 +187,7 @@ export function SearchBars() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setCity('Ma localisation');
+        setLocalCity('Ma localisation');
         setCityLat(latitude);
         setCityLon(longitude);
       },
@@ -220,7 +224,7 @@ export function SearchBars() {
             className="bg-transparent outline-none text-sm flex-1 min-w-0 lg:w-96"
             value={keyword}
             onChange={(e) => {
-              setKeyword(e.target.value);
+              setLocalKeyword(e.target.value);
             }}
             onKeyDown={handleKeyDown}
           />
@@ -238,7 +242,7 @@ export function SearchBars() {
               value={city}
               onChange={(e) => {
                 const value = e.target.value;
-                setCity(value);
+                setLocalCity(value);
                 setCityLat(undefined);
                 setCityLon(undefined);
                 setHighlightedIndex(-1);
@@ -280,7 +284,6 @@ export function SearchBars() {
                   <button
                     key={`${c.name}-${c.lat}-${c.lon}`}
                     onMouseDown={(e) => {
-                      // Prevent input blur before onClick fires
                       e.preventDefault();
                       selectSuggestion(c);
                     }}
@@ -407,8 +410,8 @@ export function SearchBars() {
         onApply={handleApplyFilters}
         keyword={keyword}
         city={city}
-        onKeywordChange={setKeyword}
-        onCityChange={setCity}
+        onKeywordChange={setLocalKeyword}
+        onCityChange={setLocalCity}
       />
     </div>
   );

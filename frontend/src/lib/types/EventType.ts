@@ -43,19 +43,3 @@ export interface EventType {
   media: Media[];
 }
 
-export interface EventContextType {
-  events: EventType[];
-  selectedEvent: EventType | null;
-  isLoading: boolean;
-  error: string | null;
-  totalPages: number;
-  fetchEvents: () => Promise<void>;
-  fetchEventsPaginated: (page: number, limit: number) => Promise<void>;
-  fetchMoreEvents: (page: number, limit: number) => Promise<void>;
-  prefetchNextPage: (page: number, limit: number) => Promise<void>;
-  fetchFilteredEvents: (page: number, limit: number, filters?: any) => Promise<void>;
-  selectEvent: (id: string) => Promise<void>;
-  createEvent: (event: Omit<EventType, "id">) => Promise<EventType>;
-  updateEvent: (id: string, event: Partial<EventType>) => Promise<EventType>;
-  deleteEvent: (id: string) => Promise<void>;
-}

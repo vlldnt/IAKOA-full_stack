@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  X,
   MapPin,
   Check,
   Music,
@@ -28,9 +27,17 @@ import {
 import { FILTER_CATEGORY_GROUPS, getCategoryHexColor } from '@/lib/constants/filter-categories';
 import { MapPreview } from './MapPreview';
 import iakoaLogo from '@/assets/logo-iakoa.svg';
-import { useFilters } from '@/features/events_page/FilterContext';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import {
+  setRadius as setGlobalRadius,
+  setCategories as setGlobalCategories,
+  setCity as setGlobalCity,
+  setKeyword as setGlobalKeyword,
+  setDateRange as setGlobalDateRange,
+  setPrice as setGlobalPrice,
+} from '@/store/slices/filtersSlice';
 
-// Type pour les résultats de ville
+// Type pour les résultats de l'API géographique française
 interface CityResult {
   name: string;
   region: string;
@@ -39,7 +46,7 @@ interface CityResult {
   postcode?: string;
 }
 
-// Mapping des IDs de sous-catégories à leurs icônes
+// Mapping des IDs de sous-catégories à leurs icônes Lucide
 const SUBCATEGORY_ICONS: Record<string, React.ComponentType<any>> = {
   // Arts & Culture
   CONCERT: Music,
@@ -118,7 +125,7 @@ export interface FilterState {
 
 const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 
-
+// Utilitaires de formatage de dates
 function fmtDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
@@ -146,6 +153,9 @@ function getTodayDates() {
   return { from: fmtDate(today), to: fmtDate(today) };
 }
 
+// Menu de filtres avancés (slide-down) avec 3 colonnes
+// Gère la localisation, les catégories, les dates et les prix
+// Synchronise l'état local avec Redux à l'application des filtres
 export function FilterMenu({
   isOpen,
   onClose,
@@ -155,15 +165,10 @@ export function FilterMenu({
   onKeywordChange,
   onCityChange,
 }: FilterMenuProps) {
-  const {
-    filters,
-    updateRadius,
-    updateCategories,
-    updateCity: updateCityFilter,
-    updateKeyword: updateKeywordFilter,
-    updateDateRange,
-    updatePrice,
-  } = useFilters();
+  const dispatch = useAppDispatch();
+  const filters = useAppSelector((state) => state.filters);
+
+  // État local du menu (synchronisé avec Redux à l'application)
   const [radius, setRadius] = useState(filters.radius);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     filters.selectedCategories,
@@ -196,7 +201,7 @@ export function FilterMenu({
     null,
   );
 
-  // Synchroniser les filtres locaux avec les filtres globaux
+  // Synchroniser les filtres locaux avec les filtres globaux Redux
   useEffect(() => {
     setRadius(filters.radius);
     setSelectedCategories(filters.selectedCategories);
@@ -218,6 +223,7 @@ export function FilterMenu({
     setTimeout(() => setGeoError(null), 3500);
   };
 
+  // Demander la géolocalisation du navigateur
   const handleGeolocation = () => {
     if (!navigator.geolocation) {
       showGeoError("Géolocalisation non supportée par votre navigateur");
@@ -239,6 +245,7 @@ export function FilterMenu({
     );
   };
 
+  // Recherche de villes via l'API géographique française
   const searchCities = async (query: string) => {
     if (query.length < 2) {
       setShowCitySuggestions(false);
@@ -278,6 +285,7 @@ export function FilterMenu({
     }, 300);
   };
 
+  // Basculer la sélection d'une sous-catégorie
   const handleCategoryToggle = (categoryId: string) => {
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
@@ -286,6 +294,7 @@ export function FilterMenu({
     );
   };
 
+  // Sélectionner/désélectionner toutes les sous-catégories d'un groupe
   const handleSelectAllInGroup = (groupId: string) => {
     const group = FILTER_CATEGORY_GROUPS.find((g) => g.id === groupId);
     if (!group) return;
@@ -306,6 +315,7 @@ export function FilterMenu({
     });
   };
 
+  // Compter les sous-catégories sélectionnées dans un groupe
   const getSelectedCount = (groupId: string) => {
     const group = FILTER_CATEGORY_GROUPS.find((g) => g.id === groupId);
     if (!group) return 0;
@@ -314,27 +324,29 @@ export function FilterMenu({
     ).length;
   };
 
+  // Appliquer les filtres: envoyer tout l'état local vers Redux
   const handleApply = () => {
     if (!city) {
       setCityError(true);
       return;
     }
     setCityError(false);
-    updateKeywordFilter(keyword);
-    updateCityFilter(city, cityLat, cityLon);
-    updateRadius(radius);
-    updateCategories(selectedCategories);
-    updateDateRange(dateFrom || undefined, dateTo || undefined);
-    updatePrice(
-      priceMin ? Math.round(parseFloat(priceMin) * 100) : undefined,
-      priceMax ? Math.round(parseFloat(priceMax) * 100) : undefined,
+    dispatch(setGlobalKeyword(keyword));
+    dispatch(setGlobalCity({ city, lat: cityLat, lon: cityLon }));
+    dispatch(setGlobalRadius(radius));
+    dispatch(setGlobalCategories(selectedCategories));
+    dispatch(setGlobalDateRange({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined }));
+    dispatch(setGlobalPrice({
+      priceMin: priceMin ? Math.round(parseFloat(priceMin) * 100) : undefined,
+      priceMax: priceMax ? Math.round(parseFloat(priceMax) * 100) : undefined,
       isFree,
-    );
+    }));
 
     onApply({ radius, selectedCategories });
     onClose();
   };
 
+  // Réinitialiser l'état local du menu
   const handleReset = () => {
     setRadius(2);
     setSelectedCategories([]);
@@ -388,7 +400,7 @@ export function FilterMenu({
                 onChange={(e) => onKeywordChange?.(e.target.value)}
               />
 
-              {/* Séparateur vertical - au milieu */}
+              {/* Séparateur vertical */}
               <div className="flex items-center h-6">
                 <div className="w-px bg-gray-300 h-5" />
               </div>

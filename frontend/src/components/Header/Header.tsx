@@ -3,21 +3,25 @@ import iakoaLogo from "@/assets/logo-iakoa.svg";
 import { Link } from "react-router-dom";
 import MenuLink from "./components/MenuLink";
 import { IakoaIcon } from "./components/IakoaIcon";
-import { useAuth } from "@/features/auth/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { logout } from "@/store/slices/authSlice";
+import { resetFilters } from "@/store/slices/filtersSlice";
 import { SearchBars } from "./components/SearchBar/SearchBar";
 import { LogIn, MapPin, X } from "lucide-react";
-import { useFilters } from "@/features/events_page/FilterContext";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
-import login from '@/assets/images/login.png';
+import login_img from '@/assets/images/login.png';
 import happy from '@/assets/images/happy.png';
 
 // Header principal de l'application
+// Contient la navigation, la barre de recherche et le modal d'authentification
 const Header = forwardRef<HTMLElement>(function Header(_, ref) {
-  const { user, logout } = useAuth();
-  const { filters, resetFilters } = useFilters();
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
+  const filters = useAppSelector((state) => state.filters);
   const [isLogin, setIsLogin] = useState(true);
 
+  // Vérifier si des filtres sont actifs pour afficher le bouton de réinitialisation
   const hasActiveFilters = !!(filters.keyword || filters.city
     || filters.selectedCategories.length > 0
     || filters.dateFrom || filters.dateTo
@@ -26,6 +30,10 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
 
   const openAuthModal = () => {
     (document.getElementById('auth_modal') as HTMLDialogElement)?.showModal();
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   return (
@@ -44,7 +52,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
             {/* Bouton X clear filters - mobile/tablette uniquement */}
             {hasActiveFilters && (
               <button
-                onClick={resetFilters}
+                onClick={() => dispatch(resetFilters())}
                 className="flex lg:hidden items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
@@ -65,7 +73,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
               <MenuLink page="Carte" link="/map" icon={MapPin} />
             </ul>
             {user ? (
-              <ProfileDropdown user={user} onLogout={logout} />
+              <ProfileDropdown user={user} onLogout={handleLogout} />
             ) : (
               <button
                 onClick={openAuthModal}
@@ -86,7 +94,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
           <MenuLink page="Carte" link="/map" icon={MapPin} />
           {user ? (
             <li>
-              <ProfileDropdown user={user} onLogout={logout} isMobile={true} />
+              <ProfileDropdown user={user} onLogout={handleLogout} isMobile={true} />
             </li>
           ) : (
             <MenuLink page="Se connecter" onClick={openAuthModal} icon={LogIn} />
@@ -149,7 +157,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
               </p>
               <div className="w-full max-w-s">
                 <img
-                  src={isLogin ? login : happy}
+                  src={isLogin ? login_img : happy}
                   alt="Bienvenue"
                   className="w-full h-64 object-cover rounded-2xl shadow-lg transition-opacity duration-500 ease-in-out"
                   key={isLogin ? 'login' : 'register'}

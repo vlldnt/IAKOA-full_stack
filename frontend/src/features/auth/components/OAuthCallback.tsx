@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../AuthContext';
+import { useAppDispatch } from '@/store/hooks';
+import { refreshUser } from '@/store/slices/authSlice';
 import * as tokenService from '@/lib/services/tokenService';
 
 // Page de callback OAuth pour Google et Facebook
-// Récupère les tokens depuis l'URL et connecte l'utilisateur
+// Récupère les tokens depuis l'URL et connecte l'utilisateur via Redux
 export function OAuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
+  const dispatch = useAppDispatch();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,13 +25,9 @@ export function OAuthCallback() {
       }
 
       try {
-        // Stocker les tokens
+        // Stocker les tokens puis rafraîchir l'utilisateur via Redux
         tokenService.setTokens(accessToken, refreshToken);
-
-        // Récupérer les informations utilisateur
-        await refreshUser();
-
-        // Rediriger vers la page d'accueil
+        await dispatch(refreshUser());
         navigate('/');
       } catch (err) {
         console.error('Erreur lors de l\'authentification OAuth:', err);
@@ -41,7 +38,7 @@ export function OAuthCallback() {
     };
 
     handleOAuthCallback();
-  }, [searchParams, navigate, refreshUser]);
+  }, [searchParams, navigate, dispatch]);
 
   if (error) {
     return (

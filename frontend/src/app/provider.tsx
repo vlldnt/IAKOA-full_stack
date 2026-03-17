@@ -1,23 +1,22 @@
 import { StrictMode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '@/features/auth/AuthContext';
-import { EventProvider } from '@/features/events_page/EventContext';
-import { FilterProvider } from '@/features/events_page/FilterContext';
+import { Provider } from 'react-redux';
+import { store } from '@/store';
 
 type AppProviderProps = {
   children: React.ReactNode;
 };
 
+// Fournisseur principal de l'application
+// Encapsule le store Redux et le routeur React Router
 export function AppProvider({ children }: AppProviderProps) {
   return (
     <StrictMode>
-      <BrowserRouter>
-        <AuthProvider>
-          <FilterProvider>
-            <EventProvider>{children}</EventProvider>
-          </FilterProvider>
-        </AuthProvider>
-      </BrowserRouter>
+      <Provider store={store}>
+        <BrowserRouter>
+          {children}
+        </BrowserRouter>
+      </Provider>
     </StrictMode>
   );
 }

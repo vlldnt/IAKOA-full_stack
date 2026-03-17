@@ -3,13 +3,14 @@ import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-le
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Plus, Minus, LocateFixed } from 'lucide-react';
-import { useFilters } from '@/features/events_page/FilterContext';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { setPosition, setRadius } from '@/store/slices/filtersSlice';
 import { fetchEventsPaginated } from '@/lib/services/eventsServices';
 import type { EventType } from '@/lib/types/EventType';
 import { getCategoryHexColor } from '@/lib/constants/filter-categories';
 import { EventModal } from '@/features/events_page/components/EventModal';
 
-// Fix leaflet icon paths with bundlers
+// Correction des chemins d'icônes Leaflet avec les bundlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -18,6 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+// Crée une icône colorée pour les marqueurs d'événements
 function createEventIcon(color: string): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -40,6 +42,7 @@ const USER_ICON = L.divIcon({
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
+// Détecte le type d'appareil en fonction de la largeur de l'écran
 function useDeviceType(): DeviceType {
   const getDevice = (): DeviceType => {
     const w = window.innerWidth;
@@ -56,6 +59,7 @@ function useDeviceType(): DeviceType {
   return device;
 }
 
+// Calcule le niveau de zoom en fonction du rayon et de l'appareil
 function getZoomForRadius(radius: number, device: DeviceType): number {
   if (radius <= 1) return device === 'mobile' ? 14 : 15;
   if (radius <= 2) return device === 'mobile' ? 13 : 14;
@@ -66,6 +70,7 @@ function getZoomForRadius(radius: number, device: DeviceType): number {
   return device === 'desktop' ? 9 : 8;
 }
 
+// Composant interne pour animer le déplacement de la carte
 function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   const prevRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
@@ -83,8 +88,11 @@ function MapUpdater({ center, zoom }: { center: [number, number]; zoom: number }
 
 const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 
+// Page carte interactive avec marqueurs d'événements et cercle de rayon
+// Utilise Redux pour les filtres globaux et un état local pour les événements affichés
 export default function MapPage() {
-  const { filters, updatePosition, updateRadius } = useFilters();
+  const dispatch = useAppDispatch();
+  const filters = useAppSelector((state) => state.filters);
   const device = useDeviceType();
   const [events, setEvents] = useState<EventType[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
@@ -103,7 +111,7 @@ export default function MapPage() {
   const mapCenter: [number, number] = userPosition ?? [46.603354, 1.888334];
   const mapZoom = getZoomForRadius(filters.radius, device);
 
-  // Track header height for the fixed map container
+  // Suivre la hauteur du header pour le positionnement de la carte
   useEffect(() => {
     const header = document.querySelector('header');
     if (!header) return;
@@ -114,13 +122,16 @@ export default function MapPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Request geolocation once on mount if position not already set
+  // Demander la géolocalisation au montage si pas de position
   useEffect(() => {
     if (!filters.latitude && !filters.longitude) {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            updatePosition(pos.coords.latitude, pos.coords.longitude);
+            dispatch(setPosition({
+              lat: pos.coords.latitude,
+              lon: pos.coords.longitude,
+            }));
             setGeolocating(false);
           },
           () => setGeolocating(false),
@@ -131,7 +142,7 @@ export default function MapPage() {
     }
   }, []);
 
-  // Fetch events whenever filters change
+  // Charger les événements quand les filtres changent
   const loadEvents = useCallback(async () => {
     if (!filters.latitude || !filters.longitude) return;
     setIsLoading(true);
@@ -158,7 +169,7 @@ export default function MapPage() {
         ),
       );
     } catch {
-      // silent — map stays with stale data
+      // Silencieux — la carte garde les données précédentes
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +191,7 @@ export default function MapPage() {
     loadEvents();
   }, [loadEvents]);
 
-  // Shared wrapper for loading / empty states
+  // Conteneur partagé pour les états vides (chargement, pas de position)
   const emptyContainer = (children: ReactNode) => (
     <div
       className="fixed left-0 right-0 bottom-16 xl:bottom-0 flex items-center justify-center bg-gray-50"
@@ -209,12 +220,12 @@ export default function MapPage() {
 
   return (
     <>
-      {/* Event detail modal */}
+      {/* Modal de détail d'un événement */}
       {selectedEvent && (
         <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}
 
-      {/* Fixed map container — accounts for fixed header (top) and mobile nav (bottom) */}
+      {/* Conteneur de carte fixe — tient compte du header et de la nav mobile */}
       <div
         className="fixed left-0 right-0 bottom-16 xl:bottom-0"
         style={{ top: headerHeight }}
@@ -230,10 +241,10 @@ export default function MapPage() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Fly to user position when it changes */}
+          {/* Déplacer la carte vers la position utilisateur */}
           {userPosition && <MapUpdater center={userPosition} zoom={mapZoom} />}
 
-          {/* Radius circle + user marker */}
+          {/* Cercle de rayon + marqueur utilisateur */}
           {userPosition && (
             <>
               <Circle
@@ -256,7 +267,7 @@ export default function MapPage() {
             </>
           )}
 
-          {/* Event markers */}
+          {/* Marqueurs des événements */}
           {events.map((event) => {
             const { lat, lng } = event.location.coordinates;
             const color = getCategoryHexColor(event.categories?.[0] ?? '');
@@ -271,7 +282,7 @@ export default function MapPage() {
           })}
         </MapContainer>
 
-        {/* Floating UI — bottom-right overlay */}
+        {/* Contrôles flottants — coin inférieur droit */}
         <div className="absolute bottom-4 right-4 z-1000 flex flex-col items-end gap-2 pointer-events-none">
           {/* Zoom + / - */}
           <div className="pointer-events-auto flex flex-col bg-white rounded-xl shadow-lg overflow-hidden">
@@ -291,9 +302,9 @@ export default function MapPage() {
             </button>
           </div>
 
-          {/* Bottom row: events count + slider + recentrer */}
+          {/* Ligne inférieure: compteur + slider rayon + recentrer */}
           <div className="flex items-center gap-2">
-            {/* Events count / loading pill */}
+            {/* Compteur d'événements / chargement */}
             <div className="pointer-events-auto bg-white rounded-full px-3 py-1.5 shadow-lg text-xs text-gray-600 flex items-center gap-1.5 whitespace-nowrap">
               {isLoading ? (
                 <>
@@ -305,7 +316,7 @@ export default function MapPage() {
               )}
             </div>
 
-            {/* Radius slider */}
+            {/* Slider de rayon */}
             <div className="pointer-events-auto bg-white rounded-xl shadow-lg px-3 py-2 flex flex-col gap-1 w-40">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500 font-medium">Rayon</span>
@@ -316,7 +327,7 @@ export default function MapPage() {
                 min="0"
                 max="6"
                 value={RADIUS_PRESETS.indexOf(filters.radius)}
-                onChange={(e) => updateRadius(RADIUS_PRESETS[Number(e.target.value)])}
+                onChange={(e) => dispatch(setRadius(RADIUS_PRESETS[Number(e.target.value)]))}
                 className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-iakoa-blue"
                 style={{
                   background: `linear-gradient(to right, #2563EB 0%, #2563EB ${(RADIUS_PRESETS.indexOf(filters.radius) / 6) * 100}%, #E5E7EB ${(RADIUS_PRESETS.indexOf(filters.radius) / 6) * 100}%, #E5E7EB 100%)`,
@@ -329,7 +340,7 @@ export default function MapPage() {
               </div>
             </div>
 
-            {/* Recentrer */}
+            {/* Bouton recentrer */}
             {userPosition && (
               <button
                 onClick={() => mapRef.current?.flyTo(userPosition, mapZoom, { duration: 1 })}

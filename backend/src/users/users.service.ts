@@ -75,7 +75,11 @@ export class UsersService {
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto, userRole?: Role): Promise<UserResponseDto> {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    userRole?: Role,
+  ): Promise<UserResponseDto> {
     // Vérifier si l'utilisateur existe
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
@@ -159,7 +163,9 @@ export class UsersService {
 
     // Vérifier si l'utilisateur a un mot de passe (non OAuth)
     if (!user.password) {
-      throw new UnauthorizedException('Cet utilisateur utilise une authentification OAuth (Google/Facebook). Veuillez vous connecter avec le même fournisseur.');
+      throw new UnauthorizedException(
+        'Cet utilisateur utilise une authentification OAuth (Google/Facebook). Veuillez vous connecter avec le même fournisseur.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(loginUserDto.password, user.password);

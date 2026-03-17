@@ -1,8 +1,9 @@
 import { EventCard } from './components/EventCard';
 import { EventModal } from './components/EventModal';
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useEvents } from './EventContext';
-import { useFilters } from './FilterContext';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { fetchFilteredEvents, fetchMoreEvents, prefetchNextPage } from '@/store/slices/eventsSlice';
+import { setPosition } from '@/store/slices/filtersSlice';
 import type { EventType } from '@/lib/types/EventType';
 
 interface EventsPageProps {
@@ -10,18 +11,27 @@ interface EventsPageProps {
   showCards?: boolean;
 }
 
-// Page d'accueil affichant les événements
-// Adapte le contenu selon l'état de connexion
+// Page d'accueil affichant les événements en grille responsive
+// Gère l'infinite scroll, les filtres et le prefetching via Redux
 function EventsPage({ text, showCards = true }: EventsPageProps) {
+  const dispatch = useAppDispatch();
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { events = [], isLoading = false, error = null, fetchMoreEvents, prefetchNextPage, totalPages = 1, fetchFilteredEvents } = useEvents();
-  const { filters, updatePosition } = useFilters();
+
+  // Lecture de l'état global Redux
+  const events = useAppSelector((state) => state.events.events);
+  const isLoading = useAppSelector((state) => state.events.isLoading);
+  const error = useAppSelector((state) => state.events.error);
+  const totalPages = useAppSelector((state) => state.events.totalPages);
+  const filters = useAppSelector((state) => state.filters);
+
+  // État local pour la pagination et la sélection d'événement
   const [currentPage, setCurrentPage] = useState(1);
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
   const itemsPerPage = 12;
 
+  // Calcul dynamique de la marge selon la hauteur du header
   useEffect(() => {
     const calculateMargin = () => {
       const header = document.querySelector('[data-header]');
@@ -39,15 +49,18 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     return () => window.removeEventListener('resize', calculateMargin);
   }, []);
 
-  // Initialiser la position de l'utilisateur en arrière-plan (sans déclencher de fetch)
+  // Initialiser la position de l'utilisateur en arrière-plan
   useEffect(() => {
     if (!filters.latitude && !filters.longitude && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          updatePosition(position.coords.latitude, position.coords.longitude);
+          dispatch(setPosition({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+          }));
         },
         () => {
-          updatePosition(44.3497, 2.5737);
+          dispatch(setPosition({ lat: 44.3497, lon: 2.5737 }));
         }
       );
     }
@@ -56,13 +69,13 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
   // Chargement initial: événements récents sans filtre
   useEffect(() => {
     if (!hasAppliedFilters) {
-      fetchFilteredEvents(1, itemsPerPage).then(() => {
-        prefetchNextPage(2, itemsPerPage);
+      dispatch(fetchFilteredEvents({ page: 1, limit: itemsPerPage })).then(() => {
+        dispatch(prefetchNextPage({ nextPage: 2, limit: itemsPerPage }));
       });
     }
   }, []);
 
-  // Quand les filtres changent (action utilisateur), fetcher avec filtres
+  // Construire les paramètres de filtre à partir de l'état Redux
   const buildFilterParams = useCallback(() => ({
     keyword: filters.keyword || undefined,
     city: filters.city || undefined,
@@ -77,7 +90,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     isFree: filters.isFree || undefined,
   }), [filters]);
 
-  // Détecter les changements de filtres (après le premier rendu)
+  // Détecter les changements de filtres et relancer la recherche
   useEffect(() => {
     const hasAnyFilter = filters.keyword || filters.city || filters.selectedCategories.length > 0
       || filters.dateFrom || filters.dateTo || filters.priceMin !== undefined
@@ -86,8 +99,12 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     if (hasAnyFilter || hasAppliedFilters) {
       setHasAppliedFilters(true);
       setCurrentPage(1);
-      fetchFilteredEvents(1, itemsPerPage, buildFilterParams()).then(() => {
-        prefetchNextPage(2, itemsPerPage);
+      dispatch(fetchFilteredEvents({
+        page: 1,
+        limit: itemsPerPage,
+        filters: buildFilterParams(),
+      })).then(() => {
+        dispatch(prefetchNextPage({ nextPage: 2, limit: itemsPerPage }));
       });
     }
   }, [filters.keyword, filters.city, filters.latitude, filters.longitude, filters.radius, filters.selectedCategories, filters.dateFrom, filters.dateTo, filters.priceMin, filters.priceMax, filters.isFree]);
@@ -101,7 +118,6 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
           !isLoading &&
           currentPage < totalPages
         ) {
-          // Charger la prochaine page
           setCurrentPage((prev) => prev + 1);
         }
       },
@@ -121,10 +137,9 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
 
   // Quand la page change, charger plus d'événements et prefetch la suivante
   useEffect(() => {
-    if (currentPage > 1 && fetchMoreEvents) {
-      fetchMoreEvents(currentPage, itemsPerPage).then(() => {
-        // Prefetch la page suivante après le chargement
-        prefetchNextPage(currentPage + 1, itemsPerPage);
+    if (currentPage > 1) {
+      dispatch(fetchMoreEvents({ page: currentPage, limit: itemsPerPage })).then(() => {
+        dispatch(prefetchNextPage({ nextPage: currentPage + 1, limit: itemsPerPage }));
       });
     }
   }, [currentPage]);

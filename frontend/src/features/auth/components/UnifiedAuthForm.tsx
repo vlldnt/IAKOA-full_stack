@@ -8,7 +8,8 @@ import {
   comparePasswords,
   isValidUser,
 } from '@/utils/validators';
-import { useAuth } from '../AuthContext';
+import { useAppDispatch } from '@/store/hooks';
+import { login, register } from '@/store/slices/authSlice';
 import SocialConnectIcons from './SocialConnectIcons';
 import { ValidatedInput } from '@/components/ui/ValidatedInput';
 import { PasswordInput } from '@/components/ui/PasswordInput';
@@ -18,14 +19,16 @@ interface UnifiedAuthFormProps {
 }
 
 // Formulaire unifié de connexion/inscription
-// Gère deux modes: login (simple) et register (avec validation)
-// Utilise les composants UI réutilisables pour réduire la duplication
+// Gère deux modes: login (simple) et register (avec validation complète)
+// Utilise les composants UI réutilisables pour les champs de saisie
 function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
-  // États séparés pour login
+  const dispatch = useAppDispatch();
+
+  // États locaux pour le formulaire login
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // États séparés pour register
+  // États locaux pour le formulaire register
   const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
@@ -34,15 +37,13 @@ function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, register } = useAuth();
-
   // Valeurs actuelles selon le mode
   const name = isLogin ? '' : registerName;
   const email = isLogin ? loginEmail : registerEmail;
   const password = isLogin ? loginPassword : registerPassword;
   const confirmPassword = isLogin ? '' : registerConfirmPassword;
 
-  // Validation
+  // Validation des champs
   const nameValid = name.length > 0 && isValidName(name);
   const emailValid = email.length > 0 && isValidEmail(email);
   const passwordValid = isValidPassword(password);
@@ -52,14 +53,18 @@ function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
     ? email.length > 0 && password.length > 0
     : isValidUser(name, email, password).valid && passwordsMatch;
 
+  // Soumission du formulaire via Redux
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    const result = isLogin
-      ? await login(email, password)
-      : await register(name, email, password);
+    const resultAction = isLogin
+      ? await dispatch(login({ email, password }))
+      : await dispatch(register({ name, email, password }));
+
+    // Extraire le résultat du thunk
+    const result = resultAction.payload as { success: boolean; error?: string };
 
     if (!result.success) {
       setError(result.error || 'Erreur de connexion');
