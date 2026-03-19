@@ -294,7 +294,9 @@ export function EventModal({ event, onClose }: EventModalProps) {
                 className="text-base font-bold"
                 style={{ color: IAKOA_BLUE }}
               >
-                {event.pricing === 0 ? 'Gratuit' : `à partir de ${formatPrice(event.pricing)}`}
+                {event.pricing === 0
+                  ? 'Gratuit'
+                  : `à partir de ${formatPrice(event.pricing)}`}
               </span>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-gray-700">
