@@ -136,6 +136,18 @@ function WebsiteButton({ url }: { url?: string | null }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function EventModal({ event, onClose }: EventModalProps) {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
+  const isFavorited = useAppSelector((state) =>
+    event.id ? state.favorites.ids.includes(event.id) : false
+  );
+
+  const handleToggleFavorite = () => {
+    if (!user?.id || !event.id) return;
+    dispatch(optimisticToggle({ eventId: event.id, add: !isFavorited }));
+    dispatch(toggleFavorite({ userId: user.id, eventId: event.id, currentlyFavorited: isFavorited }));
+  };
+
   const [descExpanded, setDescExpanded] = useState(false);
   const [isDescTruncated, setIsDescTruncated] = useState(false);
   const descRef = useRef<HTMLParagraphElement>(null);
@@ -429,12 +441,19 @@ export function EventModal({ event, onClose }: EventModalProps) {
                 Partager
               </button>
               <button
-                disabled
-                title="Ajouter aux favoris (bientôt disponible)"
-                className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
+                onClick={handleToggleFavorite}
+                disabled={!user}
+                title={!user ? 'Connectez-vous pour ajouter aux favoris' : isFavorited ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                className={`flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors
+                  ${isFavorited
+                    ? 'bg-red-50 text-red-500 hover:bg-red-100'
+                    : user
+                      ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
               >
-                <Heart className="h-4 w-4" />
-                Favoris
+                <Heart className="h-4 w-4" fill={isFavorited ? 'currentColor' : 'none'} />
+                {isFavorited ? 'Favori' : 'Favoris'}
               </button>
             </div>
 
