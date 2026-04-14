@@ -7,7 +7,7 @@ import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
 import { resetFilters } from "@/store/slices/filtersSlice";
 import { SearchBars } from "./components/SearchBar/SearchBar";
-import { LogIn, MapPin, X } from "lucide-react";
+import { LogIn, MapPin, X, Heart, Plus } from "lucide-react";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
 import login_img from '@/assets/images/login.png';
@@ -71,6 +71,8 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
             <ul className="flex gap-2 rounded-lg">
               <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
               <MenuLink page="Carte" link="/map" icon={MapPin} />
+              {user && <MenuLink page="Favoris" link="/favorites" icon={Heart} />}
+              {user && <MenuLink page="Créer" link="/create" icon={Plus} />}
             </ul>
             {user ? (
               <ProfileDropdown user={user} onLogout={handleLogout} />
@@ -89,9 +91,11 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
 
       {/* Menu mobile/tablette - Barre avec icônes + dropdown profil */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-50">
-        <ul className="flex justify-center items-center gap-6 py-3 px-4">
+        <ul className="flex justify-center items-center gap-4 py-3 px-4">
           <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
           <MenuLink page="Carte" link="/map" icon={MapPin} />
+          {user && <MenuLink page="Favoris" link="/favorites" icon={Heart} />}
+          {user && <MenuLink page="Créer" link="/create" icon={Plus} />}
           {user ? (
             <li>
               <ProfileDropdown user={user} onLogout={handleLogout} isMobile={true} />
