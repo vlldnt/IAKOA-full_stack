@@ -36,8 +36,8 @@ export function Layout() {
     <>
       <Header ref={headerRef} />
       <main
-        className="min-h-screen flex pb-16 xl:pb-0 bg-white w-full"
-        style={{ paddingTop: headerHeight }}
+        className="flex flex-1 flex-col pb-16 lg:pb-0 bg-white w-full"
+        style={{ paddingTop: headerHeight, minHeight: '100vh' }}
       >
         <Outlet />
       </main>

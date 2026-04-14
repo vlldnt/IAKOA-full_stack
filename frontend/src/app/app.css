@@ -9,3 +9,10 @@
 body {
     font-family: 'Varela Round', Calibri, 'Segoe UI', sans-serif !important;
 }
+
+/* Chaîne flex pour que les pages full-height puissent occuper tout l'espace disponible */
+html,
+body,
+#root {
+    height: 100%;
+}
