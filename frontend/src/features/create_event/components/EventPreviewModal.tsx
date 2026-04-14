@@ -4,7 +4,7 @@ import type { useCreateEventForm } from '../hooks/useCreateEventForm';
 
 type PreviewProps = Pick<
   ReturnType<typeof useCreateEventForm>,
-  'form' | 'selectedAddress' | 'companies' | 'isSubmitting' | 'handleSubmit' | 'closePreview'
+  'form' | 'selectedAddress' | 'companies' | 'isSubmitting' | 'handleSubmit' | 'closePreview' | 'imagePreviewUrl' | 'isEditMode'
 >;
 
 function formatDate(date: string, time: string) {
@@ -29,6 +29,8 @@ export function EventPreviewModal({
   isSubmitting,
   handleSubmit,
   closePreview,
+  imagePreviewUrl,
+  isEditMode,
 }: PreviewProps) {
   const company = companies.find((c) => c.id === form.selectedCompanyId);
 
@@ -47,7 +49,9 @@ export function EventPreviewModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Aperçu</p>
-            <h2 className="text-lg font-bold text-gray-900 mt-0.5">Vérifiez votre événement</h2>
+            <h2 className="text-lg font-bold text-gray-900 mt-0.5">
+              {isEditMode ? 'Vérifiez les modifications' : 'Vérifiez votre événement'}
+            </h2>
           </div>
           <button
             onClick={closePreview}
@@ -64,6 +68,17 @@ export function EventPreviewModal({
           <div>
             <p className="text-xl font-bold text-gray-900 leading-snug">{form.name}</p>
           </div>
+
+          {/* Image de couverture */}
+          {imagePreviewUrl && (
+            <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+              <img
+                src={imagePreviewUrl}
+                alt="Aperçu de l'image sélectionnée"
+                className="w-full h-52 object-cover"
+              />
+            </div>
+          )}
 
           {/* Catégories */}
           {form.categories.length > 0 && (
@@ -166,7 +181,7 @@ export function EventPreviewModal({
                 Publication…
               </>
             ) : (
-              'Confirmer et publier'
+              isEditMode ? 'Confirmer et mettre à jour' : 'Confirmer et publier'
             )}
           </button>
         </div>

@@ -4,6 +4,7 @@ import { updateAuthUser } from '@/store/slices/authSlice';
 import { EditProfileSection } from './components/EditProfileSection';
 import { ChangePasswordSection } from './components/ChangePasswordSection';
 import { CompaniesSection } from './components/CompaniesSection';
+import { MyEventsSection } from './components/MyEventsSection';
 import type { UserType } from '@/lib/types/AuthType';
 
 export default function AccountPage() {
@@ -30,6 +31,7 @@ export default function AccountPage() {
 
         <EditProfileSection user={user} onUpdated={handleUserUpdated} />
         <ChangePasswordSection userId={user.id} />
+        {user.isCreator && <MyEventsSection />}
         {user.isCreator && <CompaniesSection />}
       </div>
     </div>

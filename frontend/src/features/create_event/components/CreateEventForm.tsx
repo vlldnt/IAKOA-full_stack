@@ -1,4 +1,4 @@
-import { Type, AlignLeft, Calendar, Clock, Globe, Building2, AlertTriangle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
+import { Type, Calendar, Clock, Globe, Building2, AlertTriangle, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ValidatedInput } from '@/components/ui/ValidatedInput';
 import { AddressAutocomplete } from './AddressAutocomplete';
@@ -16,6 +16,8 @@ export function CreateEventForm({
   setField,
   errors,
   isSubmitting,
+  isPrefilling,
+  isEditMode,
   submitSuccess,
   handleSubmit: _handleSubmit,
   onRequestPreview,
@@ -26,11 +28,23 @@ export function CreateEventForm({
   handleSelectAddress,
   clearAddress,
   toggleCategory,
+  imageFile,
+  imagePreviewUrl,
+  handleImageChange,
+  handleImageClear,
   companies,
   companiesLoading,
   companiesError,
   user,
 }: FormProps) {
+  if (isPrefilling) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-gray-400">
+        <Loader2 size={16} className="animate-spin" /> Chargement de l'événement…
+      </div>
+    );
+  }
+
   // ── Garde : utilisateur non créateur ───────────────────────────────────────
   if (!user?.isCreator) {
     return (
@@ -76,7 +90,9 @@ export function CreateEventForm({
       <div className="flex flex-col items-center gap-4 py-12 text-center">
         <CheckCircle2 size={48} className="text-green-500" />
         <div>
-          <p className="text-xl font-bold text-gray-800">Événement créé !</p>
+          <p className="text-xl font-bold text-gray-800">
+            {isEditMode ? 'Événement mis à jour !' : 'Événement créé !'}
+          </p>
           <p className="text-sm text-gray-500 mt-1">Redirection en cours…</p>
         </div>
       </div>
@@ -277,6 +293,19 @@ export function CreateEventForm({
         ) : null}
       </section>
 
+      {/* ── Section : Médias (optionnel) ──────────────────────────────────── */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+          Médias <span className="text-gray-400 text-xs font-normal">(optionnel)</span>
+        </h2>
+        <ImageUploadField
+          file={imageFile}
+          previewUrl={imagePreviewUrl}
+          onChange={handleImageChange}
+          onClear={handleImageClear}
+        />
+      </section>
+
       {/* ── Section : Site web (optionnel) ────────────────────────────────── */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
@@ -322,7 +351,7 @@ export function CreateEventForm({
             Publication en cours…
           </>
         ) : (
-          'Aperçu et publication →'
+          isEditMode ? 'Aperçu et mise à jour →' : 'Aperçu et publication →'
         )}
       </button>
     </form>

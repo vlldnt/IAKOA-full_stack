@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { createEvent } from '@/store/slices/eventsSlice';
+import { createEvent, updateEvent } from '@/store/slices/eventsSlice';
 import { fetchMyCompanies, type CompanyType } from '@/lib/services/companiesService';
+import { fetchEventById } from '@/lib/services/eventsServices';
 import { searchAddresses, type AddressSuggestion } from '../services/geocodingService';
 import { uploadImage } from '../services/uploadService';
+import type { Media } from '@/lib/types/EventType';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,7 +29,10 @@ export type FormErrors = Partial<Record<keyof FormState | 'address' | 'submit', 
 export function useCreateEventForm() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAppSelector((state) => state.auth);
+  const editEventId = searchParams.get('edit');
+  const isEditMode = !!editEventId;
 
   // État du formulaire
   const [form, setForm] = useState<FormState>({
@@ -57,6 +62,10 @@ export function useCreateEventForm() {
   // Image de couverture
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [existingMedia, setExistingMedia] = useState<Media[]>([]);
+
+  // Chargement du mode édition
+  const [isPrefilling, setIsPrefilling] = useState(false);
 
   // État soumission
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,6 +95,73 @@ export function useCreateEventForm() {
       .catch(() => setCompaniesError('Impossible de charger vos entreprises.'))
       .finally(() => setCompaniesLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    if (!isEditMode || !editEventId || !user?.isCreator) return;
+
+    let cancelled = false;
+
+    const loadEventForEdit = async () => {
+      setIsPrefilling(true);
+      setErrors((e) => ({ ...e, submit: undefined }));
+
+      try {
+        const event = await fetchEventById(editEventId);
+        if (cancelled) return;
+
+        const eventDate = new Date(event.date);
+        const date = Number.isNaN(eventDate.getTime())
+          ? ''
+          : eventDate.toISOString().slice(0, 10);
+        const time = Number.isNaN(eventDate.getTime())
+          ? ''
+          : `${String(eventDate.getHours()).padStart(2, '0')}:${String(eventDate.getMinutes()).padStart(2, '0')}`;
+
+        setForm({
+          name: event.name || '',
+          description: event.description || '',
+          date,
+          time,
+          pricingEuros: event.pricing ? (event.pricing / 100).toFixed(2) : '',
+          isFree: event.pricing === 0,
+          website: event.website || '',
+          categories: event.categories || [],
+          selectedCompanyId: event.companyId || '',
+        });
+
+        const address: AddressSuggestion = {
+          label: event.location?.address || '',
+          city: event.location?.city || '',
+          postalCode: event.location?.postalCode || '',
+          country: event.location?.country || '',
+          coordinates: event.location?.coordinates || { lat: 0, lng: 0 },
+        };
+
+        setSelectedAddress(address);
+        setAddressQuery(address.label);
+        setAddressSuggestions([]);
+
+        const firstMedia = event.media?.[0]?.url || null;
+        setImageFile(null);
+        setImagePreviewUrl(firstMedia);
+        setExistingMedia(event.media || []);
+      } catch (err: any) {
+        if (cancelled) return;
+        setErrors((e) => ({
+          ...e,
+          submit: err?.message || "Impossible de charger l'événement à éditer.",
+        }));
+      } finally {
+        if (!cancelled) setIsPrefilling(false);
+      }
+    };
+
+    loadEventForEdit();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, editEventId, user]);
 
   // ── Handlers formulaire ─────────────────────────────────────────────────────
 
@@ -132,14 +208,22 @@ export function useCreateEventForm() {
   // ── Image de couverture ─────────────────────────────────────────────────────
 
   const handleImageChange = useCallback((file: File, previewUrl: string) => {
+    if (imagePreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl);
     setImageFile(file);
     setImagePreviewUrl(previewUrl);
-  }, []);
+  }, [imagePreviewUrl]);
 
   const handleImageClear = useCallback(() => {
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    if (imagePreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl);
     setImageFile(null);
     setImagePreviewUrl(null);
+    setExistingMedia([]);
+  }, [imagePreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl);
+    };
   }, [imagePreviewUrl]);
 
   // ── Catégories ──────────────────────────────────────────────────────────────
@@ -228,10 +312,12 @@ export function useCreateEventForm() {
 
     try {
       // Upload de l'image si présente
-      let media: { url: string; type: string }[] = [];
+      let media: { url: string; type: string }[] = existingMedia;
       if (imageFile) {
         const url = await uploadImage(imageFile);
         media = [{ url, type: imageFile.type }];
+      } else if (!imagePreviewUrl) {
+        media = [];
       }
 
       // Construction de la date ISO — combine date + heure (ou minuit par défaut)
@@ -258,15 +344,19 @@ export function useCreateEventForm() {
         media,
       };
 
-      await dispatch(createEvent(payload)).unwrap();
+      if (isEditMode && editEventId) {
+        await dispatch(updateEvent({ id: editEventId, eventData: payload })).unwrap();
+      } else {
+        await dispatch(createEvent(payload)).unwrap();
+      }
       setSubmitSuccess(true);
 
       // Redirection vers la liste des événements après un court délai (feedback visuel)
-      setTimeout(() => navigate('/'), 1500);
+      setTimeout(() => navigate('/profile'), 1500);
     } catch (err: any) {
       setErrors((e) => ({
         ...e,
-        submit: err?.message || "Une erreur est survenue lors de la création de l'événement.",
+        submit: err?.message || `Une erreur est survenue lors de la ${isEditMode ? 'mise à jour' : 'création'} de l'événement.`,
       }));
     } finally {
       setIsSubmitting(false);
@@ -281,7 +371,9 @@ export function useCreateEventForm() {
     setField,
     errors,
     isSubmitting,
+    isPrefilling,
     submitSuccess,
+    isEditMode,
     handleSubmit,
     // Aperçu
     showPreview,

@@ -7,7 +7,7 @@ import { getCategoryLabel } from '@/lib/constants/filter-categories';
 export default function CreateEventPage() {
   const formProps = useCreateEventForm();
   const { form, selectedAddress, companies, showPreview, openPreview, closePreview,
-    handleSubmit, isSubmitting, submitSuccess } = formProps;
+    handleSubmit, isSubmitting, submitSuccess, imagePreviewUrl, isEditMode } = formProps;
 
   const company = companies.find((c) => c.id === form.selectedCompanyId);
 
@@ -22,9 +22,13 @@ export default function CreateEventPage() {
 
             {/* En-tête mobile/tablette uniquement */}
             <div className="lg:hidden mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Créer un événement</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {isEditMode ? "Modifier l'événement" : 'Créer un événement'}
+              </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Remplissez les informations puis prévisualisez avant de publier.
+                {isEditMode
+                  ? "Mettez à jour les informations puis prévisualisez avant d'enregistrer."
+                  : 'Remplissez les informations puis prévisualisez avant de publier.'}
               </p>
             </div>
 
@@ -40,9 +44,11 @@ export default function CreateEventPage() {
 
             {/* Titre */}
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Créer un événement</h1>
+              <h1 className="text-xl font-bold text-gray-900">
+                {isEditMode ? "Modifier l'événement" : 'Créer un événement'}
+              </h1>
               <p className="text-sm text-gray-500 mt-1">
-                Prévisualisez avant de publier.
+                {isEditMode ? "Prévisualisez avant d'enregistrer." : 'Prévisualisez avant de publier.'}
               </p>
             </div>
 
@@ -93,22 +99,6 @@ export default function CreateEventPage() {
               />
             </div>
 
-            {/* CTA desktop */}
-            {!submitSuccess && (
-              <button
-                type="button"
-                onClick={openPreview}
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl
-                  bg-iakoa-blue text-white text-sm font-semibold shadow-sm
-                  hover:bg-blue-600 active:scale-[0.98]
-                  disabled:opacity-60 disabled:cursor-not-allowed
-                  transition-all duration-150"
-              >
-                <Plus size={16} />
-                Aperçu et publication
-              </button>
-            )}
           </div>
         </aside>
       </div>
@@ -126,7 +116,7 @@ export default function CreateEventPage() {
               active:scale-[0.98] transition-all duration-150"
           >
             <Plus size={18} />
-            Aperçu et publication
+            {isEditMode ? 'Aperçu et mise à jour' : 'Aperçu et publication'}
           </button>
         </div>
       )}
@@ -137,6 +127,8 @@ export default function CreateEventPage() {
           form={form}
           selectedAddress={selectedAddress}
           companies={companies}
+          imagePreviewUrl={imagePreviewUrl}
+          isEditMode={isEditMode}
           isSubmitting={isSubmitting}
           handleSubmit={handleSubmit}
           closePreview={closePreview}

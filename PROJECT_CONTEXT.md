@@ -58,7 +58,7 @@ frontend/src/
 │   ├── create_event/ # CreateEventPage + sous-composants + hook + service
 │   ├── create_company/ # CreateCompanyPage + sous-composants + hook
 │   ├── favorites/    # FavoritesPage (grille événements favoris)
-│   └── profile/      # AccountPage + EditProfileSection, ChangePasswordSection, CompaniesSection
+│   └── profile/      # AccountPage + EditProfileSection, ChangePasswordSection, MyEventsSection, CompaniesSection
 ├── components/
 │   ├── Header/       # Header, SearchBar (keyword + ville)
 │   └── ui/           # ValidatedInput, PasswordInput
@@ -81,15 +81,17 @@ frontend/src/
 - **AddressAutocomplete** — champ adresse BAN avec dropdown suggestions + indicateur sélection
 - **CategorySelector** — multi-select catégories groupées avec badges colorés
 - **PricingField** — prix en euros avec toggle "Gratuit"
+- **ImageUploadField** — upload image (drag & drop/click), preview locale, validation type/taille
 - **SocialNetworksFields** — champs réseaux sociaux avec icônes SVG inline (Facebook, Instagram, X, YouTube, TikTok)
-- **EventPreviewModal** — modal d'aperçu avant publication (voir section 8)
+- **EventPreviewModal** — modal d'aperçu avant publication avec image sélectionnée (voir section 8)
 - **EditProfileSection** — affichage + édition inline nom/email avec `updateUser()`, badges isCreator/role
 - **ChangePasswordSection** — changement mot de passe (regex complexité + confirm), `updateUser(userId, {password})`
+- **MyEventsSection** — liste des événements du créateur, filtre par entreprise, tri par date, actions Éditer/Supprimer
 - **CompaniesSection** — accordion par entreprise, édition inline + suppression, `updateCompany()` / `deleteCompany()`
 - **EventModal** — bouton Favoris fonctionnel (même logique Redux optimistic que EventCard) : rouge/plein si favori, gris si non, désactivé si non connecté
 
 ### Layout des pages formulaire
-- **Desktop (≥ lg)** : 2 colonnes — gauche scrollable (form), droite fixe (récapitulatif live + CTA)
+- **Desktop (≥ lg)** : 2 colonnes — gauche scrollable (form), droite fixe (récapitulatif live)
 - **Mobile/tablette (< lg)** : sections en block, bouton flottant fixe (`bottom-20` pour laisser place à la nav bottom)
 - Chaîne flex complète : `html → body → #root → main (flex-1) → page (flex-1 flex-row)`
 
@@ -138,10 +140,12 @@ backend/src/
 - **Carte interactive** — Leaflet, markers colorés par catégorie, rayon ajustable, localisation GPS
 - **Authentification** — email/password + OAuth Google/Facebook, JWT access/refresh tokens
 - **Création événement** — formulaire multi-sections, adresse → GPS, catégories multi-select, tarification, aperçu avant publication
+- **Upload média événement** — upload Cloudinary unsigned côté frontend, puis envoi `media: [{ url, type }]` au backend
+- **Gestion événements depuis le compte** — édition via formulaire prérempli et suppression avec confirmation
 - **Création entreprise** — formulaire avec SIREN, description, site web, réseaux sociaux
 - **Entreprises** — modèle intermédiaire obligatoire entre user et événement
 - **Favoris** — bouton cœur sur EventCard (optimistic Redux), FavoritesPage avec grille, persisté via `/users/:id/favorites`
-- **Mon compte** — AccountPage (profil, mot de passe, entreprises) accessible via `/profile`
+- **Mon compte** — AccountPage (profil, mot de passe, mes événements filtrables/triables, entreprises) accessible via `/profile`
 
 ---
 
@@ -164,11 +168,17 @@ SearchBar → dispatch(fetchFilteredEvents({filters})) → eventsSlice
 ### Create event flow
 ```
 CreateEventPage → useCreateEventForm()
+  ├── mode édition si URL `/create?edit=<eventId>`
+  │    └── fetchEventById(eventId) → préremplissage complet du formulaire
   ├── fetchMyCompanies() → GET /companies/my-companies (companyId)
   ├── searchAddresses(query) → api-adresse.data.gouv.fr → {label, city, postalCode, coordinates}
+  ├── handleImageChange(file) → preview locale via object URL
   ├── openPreview() → validate() → showPreview = true → EventPreviewModal
-  └── handleSubmit() (depuis modal) → dispatch(createEvent(payload)).unwrap() → POST /events
-       payload: { name, date(ISO), description, pricing(centimes), location{...coordinates}, companyId, website?, categories[], media:[] }
+  ├── handleSubmit() → uploadImage(file) vers Cloudinary (unsigned preset)
+  └── handleSubmit() (depuis modal)
+       ├── création : dispatch(createEvent(payload)).unwrap() → POST /events
+       └── édition : dispatch(updateEvent({id, eventData: payload})).unwrap() → PATCH /events/:id
+       payload: { name, date(ISO), description, pricing(centimes), location{...coordinates}, companyId, website?, categories[], media:[{url,type}] }
 ```
 
 ### Create company flow
@@ -193,6 +203,12 @@ Déconnexion → dispatch(clearFavorites())
 /profile → AccountPage → useAppSelector(state.auth.user)
   ├── EditProfileSection → updateUser(id, {name, email}) → dispatch(updateAuthUser(updated))
   ├── ChangePasswordSection → updateUser(id, {password}) (ne touche pas Redux)
+  ├── MyEventsSection (si user.isCreator)
+  │    ├── fetchMyEvents() + fetchMyCompanies() au mount
+  │    ├── filtre par companyId (`all` ou entreprise donnée)
+  │    └── tri date (`date_desc`/`date_asc`) pour la liste affichée
+  │    ├── action Éditer → `/create?edit=<eventId>`
+  │    └── action Supprimer → confirm() + deleteEvent(id) + retrait local de la liste
   └── CompaniesSection (si user.isCreator) → fetchMyCompanies() au mount
        ├── edit accordion → updateCompany(id, payload) → mise à jour locale
        └── delete → confirm + deleteCompany(id) → filtre local
@@ -222,6 +238,7 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 - Affichage erreurs : `<p className="text-xs text-red-500 mt-1">` sous le champ concerné
 - Validation visuelle : `ValidatedInput` avec `isValid` + `showValidation` (bordures colorées)
 - **Flux événement** : bouton "Aperçu →" → validate → modal preview → "Confirmer et publier" → POST
+- **Médias événement** : preview locale (`URL.createObjectURL`) nettoyée via `URL.revokeObjectURL`, upload Cloudinary au submit
 
 ### API calls
 - Plain `fetch()` dans les services — pas d'axios
@@ -261,9 +278,36 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 ```typescript
 // useCreateEventForm expose : showPreview, openPreview(), closePreview()
 // openPreview() = validate() → si ok → showPreview = true
-// handleSubmit() = setShowPreview(false) → dispatch(createEvent(payload))
-// EventPreviewModal reçoit form, selectedAddress, companies, isSubmitting
-// Boutons : "Modifier" (closePreview) | "Confirmer et publier" (handleSubmit)
+// handleSubmit() = setShowPreview(false) → createEvent(...) ou updateEvent(...)
+// EventPreviewModal reçoit form, selectedAddress, companies, imagePreviewUrl, isSubmitting, isEditMode
+// Boutons : "Modifier" (closePreview) | "Confirmer et publier/mettre à jour" (handleSubmit)
+```
+
+### Édition d'événement (depuis Mon compte)
+```typescript
+// MyEventsSection: bouton "Éditer" -> navigate('/create?edit=<eventId>')
+// useCreateEventForm détecte `edit` dans query params
+// Préremplit: titre, description, date/heure, adresse, prix, catégories, entreprise, website, image existante
+// Submit en mode édition -> PATCH /events/:id via updateEvent
+// Si aucune nouvelle image n'est uploadée, media existant est conservé
+```
+
+### Suppression d'événement (depuis Mon compte)
+```typescript
+// MyEventsSection: bouton "Supprimer"
+// Confirm navigateur obligatoire avant suppression
+// deleteEvent(id) -> DELETE /events/:id
+// En cas de succès: retrait local immédiat de l'élément dans la liste
+```
+
+### Upload image Cloudinary (frontend)
+```typescript
+// uploadService.uploadImage(file): POST https://api.cloudinary.com/v1_1/<cloud>/image/upload
+// unsigned upload preset requis
+// Variables d'env:
+//   VITE_CLOUDINARY_CLOUD_NAME
+//   VITE_CLOUDINARY_UPLOAD_PRESET
+// Retour: secure_url (utilisé dans payload.media)
 ```
 
 ### Adresse → Coordonnées GPS
@@ -298,7 +342,7 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 // Gardes inline dans les composants (pas de ProtectedRoute)
 // Bandeau d'avertissement si !isCreator, lien /company/new si aucune entreprise
 // AccountPage : if (!user) → navigate('/') + return null (guard inline)
-// CompaniesSection dans AccountPage : affichée seulement si user.isCreator
+// MyEventsSection et CompaniesSection dans AccountPage : affichées seulement si user.isCreator
 ```
 
 ### Companies (relation user → événement)
@@ -335,6 +379,7 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 ### Environnement
 - `VITE_API_BASE_URL` ou fallback `http://localhost:3000` (eventsServices, companiesService)
 - `VITE_API_URL` utilisé dans authService (même valeur attendue)
+- `VITE_CLOUDINARY_CLOUD_NAME` + `VITE_CLOUDINARY_UPLOAD_PRESET` pour l'upload média côté frontend
 - PostgreSQL 18, cluster `main`, port 5432, user `iakoa_dev`, db `iakoa-backend`
 
 ---
