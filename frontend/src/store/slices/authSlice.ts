@@ -134,7 +134,11 @@ export const logout = createAsyncThunk<void>(
 const authSlice = createSlice({
   name: 'auth',
   initialState,
-  reducers: {},
+  reducers: {
+    updateAuthUser(state, action: { payload: UserType }) {
+      state.user = action.payload;
+    },
+  },
   extraReducers: (builder) => {
     // refreshUser — chargement initial de l'utilisateur
     builder
@@ -179,4 +183,5 @@ const authSlice = createSlice({
   },
 });
 
+export const { updateAuthUser } = authSlice.actions;
 export default authSlice.reducer;

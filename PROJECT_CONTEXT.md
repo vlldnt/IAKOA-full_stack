@@ -53,34 +53,39 @@ frontend/src/
 ├── app/              # Router (AppRouter), Layout, App setup, app.css
 ├── features/
 │   ├── auth/         # AuthModal, UnifiedAuthForm, OAuthCallback
-│   ├── events_page/  # EventsPage, EventCard, EventModal
+│   ├── events_page/  # EventsPage, EventCard (avec bouton favoris), EventModal
 │   ├── map_page/     # MapPage (Leaflet, markers, radius)
 │   ├── create_event/ # CreateEventPage + sous-composants + hook + service
-│   └── create_company/ # CreateCompanyPage + sous-composants + hook
+│   ├── create_company/ # CreateCompanyPage + sous-composants + hook
+│   ├── favorites/    # FavoritesPage (grille événements favoris)
+│   └── profile/      # AccountPage + EditProfileSection, ChangePasswordSection, CompaniesSection
 ├── components/
 │   ├── Header/       # Header, SearchBar (keyword + ville)
 │   └── ui/           # ValidatedInput, PasswordInput
 ├── lib/
 │   ├── types/        # EventType, AuthType (UserType)
-│   ├── services/     # eventsServices, authService, tokenService, companiesService
+│   ├── services/     # eventsServices, authService, tokenService, companiesService, accountService, favoritesService
 │   └── constants/    # FILTER_CATEGORY_GROUPS (72 catégories groupées avec hexColor)
 ├── store/
-│   ├── index.ts      # { auth, events, filters }
+│   ├── index.ts      # { auth, events, filters, favorites }
 │   ├── hooks.ts      # useAppDispatch, useAppSelector
-│   └── slices/       # authSlice, eventsSlice, filtersSlice
+│   └── slices/       # authSlice, eventsSlice, filtersSlice, favoritesSlice
 └── utils/            # validators.ts
 ```
 
 ### Composants clés
 - **ValidatedInput** — input avec bordure verte/rouge selon `isValid` + `showValidation`
 - **SearchBar** — keyword + ville avec autocomplétion debounce 300ms + "Ma localisation"
-- **EventCard** — carte événement (image, catégories colorées, prix, date)
+- **EventCard** — carte événement (image, catégories colorées, prix, date) + bouton cœur favoris (Redux optimistic)
 - **EventModal** — modal plein écran avec carte Leaflet, liens navigation, réseaux sociaux
 - **AddressAutocomplete** — champ adresse BAN avec dropdown suggestions + indicateur sélection
 - **CategorySelector** — multi-select catégories groupées avec badges colorés
 - **PricingField** — prix en euros avec toggle "Gratuit"
 - **SocialNetworksFields** — champs réseaux sociaux avec icônes SVG inline (Facebook, Instagram, X, YouTube, TikTok)
 - **EventPreviewModal** — modal d'aperçu avant publication (voir section 8)
+- **EditProfileSection** — affichage + édition inline nom/email avec `updateUser()`, badges isCreator/role
+- **ChangePasswordSection** — changement mot de passe (regex complexité + confirm), `updateUser(userId, {password})`
+- **CompaniesSection** — accordion par entreprise, édition inline + suppression, `updateCompany()` / `deleteCompany()`
 
 ### Layout des pages formulaire
 - **Desktop (≥ lg)** : 2 colonnes — gauche scrollable (form), droite fixe (récapitulatif live + CTA)
@@ -117,6 +122,12 @@ backend/src/
 | GET | `/events/my-events` | Bearer | Mes événements |
 | GET | `/companies/my-companies` | Bearer | Mes entreprises |
 | POST | `/companies` | Bearer (isCreator) | Créer entreprise |
+| PATCH | `/companies/:id` | Bearer (owner) | Modifier entreprise |
+| DELETE | `/companies/:id` | Bearer (owner) | Supprimer entreprise |
+| PATCH | `/users/:id` | Bearer | Modifier profil (name, email, password) |
+| GET | `/users/:id/favorites` | Bearer | IDs événements favoris |
+| POST | `/users/:id/favorites/:eventId` | Bearer | Ajouter favori |
+| DELETE | `/users/:id/favorites/:eventId` | Bearer | Retirer favori |
 
 ---
 
@@ -128,6 +139,8 @@ backend/src/
 - **Création événement** — formulaire multi-sections, adresse → GPS, catégories multi-select, tarification, aperçu avant publication
 - **Création entreprise** — formulaire avec SIREN, description, site web, réseaux sociaux
 - **Entreprises** — modèle intermédiaire obligatoire entre user et événement
+- **Favoris** — bouton cœur sur EventCard (optimistic Redux), FavoritesPage avec grille, persisté via `/users/:id/favorites`
+- **Mon compte** — AccountPage (profil, mot de passe, entreprises) accessible via `/profile`
 
 ---
 
@@ -137,6 +150,7 @@ backend/src/
 ```
 User → UnifiedAuthForm → dispatch(login/register) → authSlice → tokenService (localStorage)
 Refresh: App mount → dispatch(refreshUser) → GET /users/me → authSlice.user
+Profile update: AccountPage → updateUser(id, payload) → dispatch(updateAuthUser(UserType)) → authSlice.user
 ```
 
 ### Events flow
@@ -164,6 +178,25 @@ CreateCompanyPage → useCreateCompanyForm()
   → succès : redirect vers /create (enchaînement naturel)
 ```
 
+### Favorites flow
+```
+App mount (user change) → dispatch(fetchFavorites(userId)) → GET /users/:id/favorites → favoritesSlice.ids[]
+EventCard heart click → dispatch(optimisticToggle({eventId, add})) (sync immédiat)
+                      → dispatch(toggleFavorite({userId, eventId, currentlyFavorited})) (API en background)
+FavoritesPage → state.favorites.ids → Promise.all(ids.map(fetchEventById)) → grille EventCard
+Déconnexion → dispatch(clearFavorites())
+```
+
+### Account flow
+```
+/profile → AccountPage → useAppSelector(state.auth.user)
+  ├── EditProfileSection → updateUser(id, {name, email}) → dispatch(updateAuthUser(updated))
+  ├── ChangePasswordSection → updateUser(id, {password}) (ne touche pas Redux)
+  └── CompaniesSection (si user.isCreator) → fetchMyCompanies() au mount
+       ├── edit accordion → updateCompany(id, payload) → mise à jour locale
+       └── delete → confirm + deleteCompany(id) → filtre local
+```
+
 ### Token management
 ```
 tokenService.getAccessToken() → localStorage
@@ -175,10 +208,12 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 ## 7. Key Patterns & Decisions
 
 ### State management
-- **Redux Toolkit** pour état global (events, auth, filters)
+- **Redux Toolkit** pour état global (events, auth, filters, favorites)
 - **useState local** pour l'état de formulaire (pattern: UnifiedAuthForm, useCreateEventForm, useCreateCompanyForm)
 - Thunks async avec `createAsyncThunk` + `.unwrap()` pour capturer les erreurs
 - Pattern `ensureMinLoadTime(500ms)` sur les fetchs pour éviter un flash de loader
+- **Optimistic UI** pour les favoris : `optimisticToggle` dispatché immédiatement, API call en background
+- `updateAuthUser` — action synchrone dans authSlice pour mettre à jour le profil après PATCH /users/:id
 
 ### Formulaires
 - **Contrôlé pur** (useState), pas de react-hook-form
@@ -203,7 +238,13 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 
 ### Routing
 - React Router v7, structure : `<Layout>` wrapping toutes les routes sauf `/auth/callback`
-- Routes : `/` (EventsPage), `/map` (MapPage), `/create` (CreateEventPage), `/company/new` (CreateCompanyPage), `/profile`, `/favorites`
+- Routes :
+  - `/` → EventsPage
+  - `/map` → MapPage
+  - `/create` → CreateEventPage (isCreator requis)
+  - `/company/new` → CreateCompanyPage (isCreator requis)
+  - `/favorites` → FavoritesPage
+  - `/profile` → AccountPage (redirige `/` si non connecté)
 - `tsconfig.app.json` : alias `@/*` → `./src/*` (sans `baseUrl` — déprécié TS 6+)
 
 ---
@@ -250,6 +291,8 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 // user.role: 'ADMIN' | 'USER' → accès admin
 // Gardes inline dans les composants (pas de ProtectedRoute)
 // Bandeau d'avertissement si !isCreator, lien /company/new si aucune entreprise
+// AccountPage : if (!user) → navigate('/') + return null (guard inline)
+// CompaniesSection dans AccountPage : affichée seulement si user.isCreator
 ```
 
 ### Companies (relation user → événement)
@@ -314,6 +357,12 @@ Authorization: `Bearer ${token}` → tous les appels protégés
 
 // AddressSuggestion (geocodingService)
 { label, city, postalCode, country, coordinates: { lat, lng } }
+
+// FavoritesState (Redux)
+{ ids: string[], isLoading: boolean, error: string | null }
+
+// UpdateUserPayload (accountService)
+{ name?: string, email?: string, password?: string }
 
 // EventFilterParams
 { page?, limit?, keyword?, city?, latitude?, longitude?, radius?,

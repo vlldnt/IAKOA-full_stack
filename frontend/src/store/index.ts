@@ -2,14 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import eventsReducer from './slices/eventsSlice';
 import filtersReducer from './slices/filtersSlice';
+import favoritesReducer from './slices/favoritesSlice';
 
-// Configuration du store Redux central
-// Combine les reducers d'authentification, d'événements et de filtres
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     events: eventsReducer,
     filters: filtersReducer,
+    favorites: favoritesReducer,
   },
 });
 

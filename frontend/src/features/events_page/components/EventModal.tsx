@@ -14,6 +14,8 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import type { EventType } from '@/lib/types/EventType';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { optimisticToggle, toggleFavorite } from '@/store/slices/favoritesSlice';
 import {
   getCategoryHexColor,
   getCategoryLabel,

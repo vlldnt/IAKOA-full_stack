@@ -6,6 +6,8 @@ import {
   getCategoryHexColor,
   getCategoryShadowColor,
 } from '@/lib/constants/filter-categories';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { optimisticToggle, toggleFavorite } from '@/store/slices/favoritesSlice';
 
 interface EventCardProps {
   event: EventType;
@@ -33,6 +35,21 @@ export function EventCard({ event, onClick }: EventCardProps) {
   const [isActive, setIsActive] = useState(false);
   const [titleLines, setTitleLines] = useState(1);
   const titleRef = useRef<HTMLHeadingElement>(null);
+
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
+  const isFavorited = useAppSelector((state) =>
+    event.id ? state.favorites.ids.includes(event.id) : false
+  );
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user?.id || !event.id) return;
+    // Mise à jour optimiste immédiate
+    dispatch(optimisticToggle({ eventId: event.id, add: !isFavorited }));
+    // Appel API en arrière-plan (rollback géré dans le slice si erreur)
+    dispatch(toggleFavorite({ userId: user.id, eventId: event.id, currentlyFavorited: isFavorited }));
+  };
 
   useEffect(() => {
     if (titleRef.current) {
@@ -106,11 +123,14 @@ export function EventCard({ event, onClick }: EventCardProps) {
             <Share2 size={14} />
           </button>
           <button
-            disabled
-            title="Ajouter aux favoris (bientôt disponible)"
-            className="flex items-center justify-center w-8 h-8 bg-white/80 rounded-full cursor-not-allowed text-gray-400"
+            onClick={handleToggleFavorite}
+            title={isFavorited ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            disabled={!user}
+            className={`flex items-center justify-center w-8 h-8 bg-white/80 rounded-full transition-all duration-150
+              ${!user ? 'cursor-not-allowed text-gray-400' : 'cursor-pointer hover:scale-110 active:scale-95'}
+              ${isFavorited ? 'text-red-500' : 'text-gray-400 hover:text-red-400'}`}
           >
-            <Heart size={14} />
+            <Heart size={14} fill={isFavorited ? 'currentColor' : 'none'} />
           </button>
         </div>
       </figure>

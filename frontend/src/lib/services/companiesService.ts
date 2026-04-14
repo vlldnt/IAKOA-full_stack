@@ -82,3 +82,54 @@ export async function createCompany(payload: CreateCompanyPayload): Promise<Comp
 
   return await res.json();
 }
+
+// Met à jour une entreprise (propriétaire uniquement)
+export async function updateCompany(
+  id: string,
+  payload: Partial<CreateCompanyPayload>
+): Promise<CompanyType> {
+  const token = tokenService.getAccessToken();
+  if (!token) throw new Error('Non authentifié');
+
+  const socialNetworks = payload.socialNetworks
+    ? Object.fromEntries(
+        Object.entries(payload.socialNetworks).filter(([, v]) => v && v.trim() !== '')
+      )
+    : undefined;
+
+  const body = {
+    ...payload,
+    socialNetworks: socialNetworks && Object.keys(socialNetworks).length > 0
+      ? socialNetworks
+      : undefined,
+  };
+
+  const res = await fetch(`${API_BASE_URL}/companies/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Erreur lors de la mise à jour : ${res.statusText}`);
+  }
+
+  return await res.json();
+}
+
+// Supprime une entreprise (propriétaire uniquement)
+export async function deleteCompany(id: string): Promise<void> {
+  const token = tokenService.getAccessToken();
+  if (!token) throw new Error('Non authentifié');
+
+  const res = await fetch(`${API_BASE_URL}/companies/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || `Erreur lors de la suppression : ${res.statusText}`);
+  }
+}
