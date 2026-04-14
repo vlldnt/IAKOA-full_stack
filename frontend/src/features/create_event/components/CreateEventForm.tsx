@@ -4,6 +4,7 @@ import { ValidatedInput } from '@/components/ui/ValidatedInput';
 import { AddressAutocomplete } from './AddressAutocomplete';
 import { CategorySelector } from './CategorySelector';
 import { PricingField } from './PricingField';
+import { ImageUploadField } from './ImageUploadField';
 import type { useCreateEventForm } from '../hooks/useCreateEventForm';
 
 type FormProps = ReturnType<typeof useCreateEventForm> & {

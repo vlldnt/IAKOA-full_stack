@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createEvent } from '@/store/slices/eventsSlice';
 import { fetchMyCompanies, type CompanyType } from '@/lib/services/companiesService';
 import { searchAddresses, type AddressSuggestion } from '../services/geocodingService';
+import { uploadImage } from '../services/uploadService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,10 @@ export function useCreateEventForm() {
   const [companies, setCompanies] = useState<CompanyType[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesError, setCompaniesError] = useState<string | null>(null);
+
+  // Image de couverture
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // État soumission
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -123,6 +128,19 @@ export function useCreateEventForm() {
     setAddressQuery('');
     setAddressSuggestions([]);
   }, []);
+
+  // ── Image de couverture ─────────────────────────────────────────────────────
+
+  const handleImageChange = useCallback((file: File, previewUrl: string) => {
+    setImageFile(file);
+    setImagePreviewUrl(previewUrl);
+  }, []);
+
+  const handleImageClear = useCallback(() => {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImageFile(null);
+    setImagePreviewUrl(null);
+  }, [imagePreviewUrl]);
 
   // ── Catégories ──────────────────────────────────────────────────────────────
 
@@ -209,6 +227,13 @@ export function useCreateEventForm() {
     setErrors((e) => ({ ...e, submit: undefined }));
 
     try {
+      // Upload de l'image si présente
+      let media: { url: string; type: string }[] = [];
+      if (imageFile) {
+        const url = await uploadImage(imageFile);
+        media = [{ url, type: imageFile.type }];
+      }
+
       // Construction de la date ISO — combine date + heure (ou minuit par défaut)
       const isoDate = new Date(`${form.date}T${form.time || '00:00'}`).toISOString();
 
@@ -230,7 +255,7 @@ export function useCreateEventForm() {
         companyId: form.selectedCompanyId,
         website: form.website.trim() || '',
         categories: form.categories,
-        media: [],
+        media,
       };
 
       await dispatch(createEvent(payload)).unwrap();
@@ -271,6 +296,11 @@ export function useCreateEventForm() {
     clearAddress,
     // Catégories
     toggleCategory,
+    // Image
+    imageFile,
+    imagePreviewUrl,
+    handleImageChange,
+    handleImageClear,
     // Entreprises
     companies,
     companiesLoading,

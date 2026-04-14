@@ -86,6 +86,7 @@ frontend/src/
 - **EditProfileSection** — affichage + édition inline nom/email avec `updateUser()`, badges isCreator/role
 - **ChangePasswordSection** — changement mot de passe (regex complexité + confirm), `updateUser(userId, {password})`
 - **CompaniesSection** — accordion par entreprise, édition inline + suppression, `updateCompany()` / `deleteCompany()`
+- **EventModal** — bouton Favoris fonctionnel (même logique Redux optimistic que EventCard) : rouge/plein si favori, gris si non, désactivé si non connecté
 
 ### Layout des pages formulaire
 - **Desktop (≥ lg)** : 2 colonnes — gauche scrollable (form), droite fixe (récapitulatif live + CTA)
@@ -246,6 +247,11 @@ Authorization: `Bearer ${token}` → tous les appels protégés
   - `/favorites` → FavoritesPage
   - `/profile` → AccountPage (redirige `/` si non connecté)
 - `tsconfig.app.json` : alias `@/*` → `./src/*` (sans `baseUrl` — déprécié TS 6+)
+
+### Navigation (Header)
+- **Desktop** : `<ul>` avec Évènements, Carte + **Favoris** et **Créer** si `user` connecté, puis ProfileDropdown ou bouton Se connecter
+- **Mobile** : barre fixe bottom (`lg:hidden`) avec Évènements, Carte + **Favoris** et **Créer** si `user` connecté, puis ProfileDropdown ou Se connecter — `gap-4` (vs `gap-6` sans user) pour absorber les 5 items
+- Les boutons Favoris/Créer sont absents du DOM quand non connecté (pas juste désactivés)
 
 ---
 
