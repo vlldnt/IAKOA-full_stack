@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Building2, Plus, Pencil, Trash2, ChevronDown, ChevronUp,
+  Building2, Plus, Pencil, Trash2, ChevronUp,
   Globe, Hash, CheckCircle2, AlertTriangle, Loader2, X,
 } from 'lucide-react';
 import { ValidatedInput } from '@/components/ui/ValidatedInput';

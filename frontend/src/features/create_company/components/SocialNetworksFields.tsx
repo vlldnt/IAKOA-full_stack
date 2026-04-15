@@ -42,19 +42,13 @@ function TiktokIcon() {
   );
 }
 
-const SOCIAL_FIELDS: {
-  key: keyof SocialNetworks;
-  label: string;
-  placeholder: string;
-  Icon: () => JSX.Element;
-  color: string;
-}[] = [
+const SOCIAL_FIELDS = [
   { key: 'facebook',  label: 'Facebook',  placeholder: 'https://facebook.com/votre-page',     Icon: FacebookIcon,  color: 'text-blue-600' },
   { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/votre-compte',   Icon: InstagramIcon, color: 'text-pink-500' },
   { key: 'x',         label: 'X (Twitter)', placeholder: 'https://x.com/votre-compte',         Icon: XIcon,         color: 'text-gray-800' },
   { key: 'youtube',   label: 'YouTube',   placeholder: 'https://youtube.com/@votre-chaine',    Icon: YoutubeIcon,   color: 'text-red-600'  },
   { key: 'tiktok',    label: 'TikTok',    placeholder: 'https://tiktok.com/@votre-compte',     Icon: TiktokIcon,    color: 'text-gray-900' },
-];
+] as const;
 
 interface SocialNetworksFieldsProps {
   values: SocialNetworks;
@@ -65,7 +59,7 @@ interface SocialNetworksFieldsProps {
 export function SocialNetworksFields({ values, onChange, errors }: SocialNetworksFieldsProps) {
   return (
     <div className="space-y-3">
-      {SOCIAL_FIELDS.map(({ key, label, placeholder, Icon, color }) => (
+      {SOCIAL_FIELDS.map(({ key, placeholder, Icon, color }) => (
         <div key={key}>
           <div className={`flex items-center gap-2 px-3 py-3 rounded-lg border bg-gray-50 transition-colors
             ${errors[key] ? 'border-red-400' : 'border-gray-200 focus-within:border-iakoa-blue'}`}>

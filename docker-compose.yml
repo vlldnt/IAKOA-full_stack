@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgresql-iakoa:
+    image: postgres:16-alpine
+    container_name: postgresql-iakoa
+    environment:
+      POSTGRES_USER: ${DB_USER:-iakoa_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-iakoa_password}
+      POSTGRES_DB: ${DB_NAME:-iakoa_db}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - iakoa-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-iakoa_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-iakoa:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend-iakoa
+    depends_on:
+      postgresql-iakoa:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: postgresql://${DB_USER:-iakoa_user}:${DB_PASSWORD:-iakoa_password}@postgresql-iakoa:5432/${DB_NAME:-iakoa_db}?schema=public
+      PGHOST: postgresql-iakoa
+      PGPORT: 5432
+      PGUSER: ${DB_USER:-iakoa_user}
+      PGPASSWORD: ${DB_PASSWORD:-iakoa_password}
+      PGDATABASE: ${DB_NAME:-iakoa_db}
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_change_in_prod}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your_refresh_secret_change_in_prod}
+      PORT: 3000
+    ports:
+      - "${BACKEND_PORT:-3001}:3000"
+    networks:
+      - iakoa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend-iakoa:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-iakoa
+    depends_on:
+      - backend-iakoa
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      VITE_API_URL: ${VITE_API_URL:-http://backend-iakoa:3000}
+    ports:
+      - "${FRONTEND_PORT:-8084}:5173"
+    networks:
+      - iakoa-network
+
+networks:
+  iakoa-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

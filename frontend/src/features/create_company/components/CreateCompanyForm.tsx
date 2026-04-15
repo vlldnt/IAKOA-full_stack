@@ -1,4 +1,4 @@
-import { Building2, Hash, AlignLeft, Globe, Share2, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Building2, Hash, Globe, Share2, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
 import { ValidatedInput } from '@/components/ui/ValidatedInput';
 import { SocialNetworksFields } from './SocialNetworksFields';
 import type { useCreateCompanyForm } from '../hooks/useCreateCompanyForm';
