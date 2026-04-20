@@ -70,7 +70,7 @@ export function CategoryGroupButton({
         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-all" />
 
         <div className="text-left relative z-10">
-          <span className="font-bold text-white text-base drop-shadow-md">
+          <span className="font-base text-white text-base drop-shadow-md">
             {group.label}
           </span>
           {selectedCount > 0 && (
