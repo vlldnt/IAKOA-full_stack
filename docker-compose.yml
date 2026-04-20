@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgresql-iakoa:
     image: postgres:16-alpine
@@ -15,7 +13,7 @@ services:
     networks:
       - iakoa-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-iakoa_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-iakoa_user} -d ${DB_NAME:-iakoa_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,6 +26,8 @@ services:
     depends_on:
       postgresql-iakoa:
         condition: service_healthy
+    env_file:
+      - ./backend/.env
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: postgresql://${DB_USER:-iakoa_user}:${DB_PASSWORD:-iakoa_password}@postgresql-iakoa:5432/${DB_NAME:-iakoa_db}?schema=public
@@ -39,13 +39,15 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_change_in_prod}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your_refresh_secret_change_in_prod}
       PORT: 3000
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-https://vieilledent.eu/iakoa-api/auth/google/callback}
+      FACEBOOK_CALLBACK_URL: ${FACEBOOK_CALLBACK_URL:-https://vieilledent.eu/iakoa-api/auth/facebook/callback}
     ports:
-      - "${BACKEND_PORT:-3001}:3000"
+      - "127.0.0.1:${BACKEND_PORT:-3001}:3000"
     networks:
       - iakoa-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 10s
+      interval: 60s
       timeout: 5s
       retries: 5
 
@@ -53,14 +55,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3001}
     container_name: frontend-iakoa
     depends_on:
       - backend-iakoa
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      VITE_API_URL: ${VITE_API_URL:-http://backend-iakoa:3000}
     ports:
-      - "${FRONTEND_PORT:-8084}:5173"
+      - "127.0.0.1:${FRONTEND_PORT:-8084}:5173"
     networks:
       - iakoa-network
 

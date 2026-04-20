@@ -172,6 +172,7 @@ export class AuthService {
 
       return user;
     } catch (error) {
+      console.error('[OAuth] validateOAuthUser error:', error);
       throw new UnauthorizedException('Erreur lors de l\'authentification OAuth');
     }
   }

@@ -28,6 +28,9 @@ async function bootstrap() {
     }),
   );
 
+  // Trust nginx reverse proxy headers
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // Activer CORS
   app.enableCors();
 

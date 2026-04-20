@@ -13,7 +13,7 @@ export function AppProvider({ children }: AppProviderProps) {
   return (
     <StrictMode>
       <Provider store={store}>
-        <BrowserRouter>
+        <BrowserRouter basename="/iakoa-app">
           {children}
         </BrowserRouter>
       </Provider>

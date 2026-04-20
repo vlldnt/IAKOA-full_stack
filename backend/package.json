@@ -38,6 +38,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
+    "@nestjs/swagger": "^11.3.2",
     "prisma": "^7.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
@@ -47,7 +48,6 @@
     "@eslint/js": "^9.39.1",
     "@nestjs/cli": "^11.0.14",
     "@nestjs/schematics": "^11.0.9",
-    "@nestjs/swagger": "^11.2.3",
     "@nestjs/testing": "^11.1.9",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",

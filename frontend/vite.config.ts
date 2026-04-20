@@ -5,6 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/iakoa-app/',
   plugins: [
     react(),
     tailwindcss(),
@@ -12,6 +13,15 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  build: {
+    chunkSizeWarningLimit: 10000,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === 'UNKNOWN_AT_RULE') return
+        warn(warning)
+      },
     },
   },
   server: {

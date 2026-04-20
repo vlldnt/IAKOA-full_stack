@@ -4,7 +4,7 @@
 const EMAIL = 'jean.dupont@example.com';
 const PASSWORD = 'Password123!';
 const COMPANY_ID = '46f0f344-5251-4bd6-b93e-2ab8ae8469c8';
-const API_URL = 'http://localhost:3000';
+const API_URL = 'https://vieilledent.eu/iakoa-api/';
 
 let BEARER_TOKEN = null;
 
