@@ -19,7 +19,6 @@ export function AppRouter() {
         <Route path="/company/new" element={<CreateCompanyPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
       </Route>
-      {/* Route OAuth callback sans le Layout (page standalone) */}
       <Route path="/auth/callback" element={<OAuthCallback />} />
     </Routes>
   );

@@ -1,5 +1,3 @@
-// Création utilisateur administrative: nom, email, mot de passe, isCreator (optionnel), role (optionnel)
-// Pour l'inscription publique, utiliser RegisterUserDto
 import { IsEmail, IsString, MaxLength, IsOptional, IsBoolean, Matches, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '@prisma/client';

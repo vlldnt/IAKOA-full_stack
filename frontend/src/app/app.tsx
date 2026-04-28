@@ -1,4 +1,3 @@
-import './app.css';
 import { useState, useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '@/components/Header/Header';
@@ -7,20 +6,16 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { refreshUser } from '@/store/slices/authSlice';
 import { fetchFavorites, clearFavorites } from '@/store/slices/favoritesSlice';
 
-// Layout principal de l'application
-// Gère le header fixe et l'espacement dynamique du contenu
 export function Layout() {
   const headerRef = useRef<HTMLElement>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
 
-  // Vérifier l'authentification au chargement de l'application
   useEffect(() => {
     dispatch(refreshUser());
   }, [dispatch]);
 
-  // Charger / vider les favoris selon l'état de connexion
   useEffect(() => {
     if (user?.id) {
       dispatch(fetchFavorites(user.id));

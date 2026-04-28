@@ -1,16 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-/**
- * Configuration de Swagger/OpenAPI pour la documentation de l'API
- * Ce module est conçu pour être utilisé uniquement en développement
- */
 export class SwaggerConfig {
-  /**
-   * Configure et monte Swagger UI sur l'application
-   * @param app - L'instance NestJS
-   * @param path - Le chemin où Swagger UI sera accessible (défaut: 'api/docs')
-   */
   static setup(app: INestApplication, path: string = 'api/docs'): void {
     const config = new DocumentBuilder()
       .setTitle('IAKOA Backend API')
@@ -57,10 +48,6 @@ export class SwaggerConfig {
     );
   }
 
-  /**
-   * Vérifie si Swagger doit être activé selon l'environnement
-   * @returns true si l'environnement est 'development' ou si NODE_ENV n'est pas défini
-   */
   static shouldEnable(): boolean {
     const nodeEnv = process.env.NODE_ENV;
     return !nodeEnv || nodeEnv === 'development';

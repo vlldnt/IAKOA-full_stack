@@ -22,20 +22,20 @@ export class HealthController {
     },
   })
   check() {
-    function formatUptime(seconds: number) {
-      const days = Math.floor(seconds / (24 * 3600));
-      seconds %= 24 * 3600;
-      const hours = Math.floor(seconds / 3600);
-      seconds %= 3600;
-      const minutes = Math.floor(seconds / 60);
-      seconds = Math.floor(seconds % 60);
-      return `${days}j ${hours}h ${minutes}m ${seconds}s`;
-    }
-
     return {
       status: 'Serveur IAKOA-backend fonctionne.',
       timestamp: new Date().toISOString(),
-      uptime: formatUptime(process.uptime()),
+      uptime: this.formatUptime(process.uptime()),
     };
+  }
+
+  private formatUptime(seconds: number): string {
+    const days = Math.floor(seconds / (24 * 3600));
+    seconds %= 24 * 3600;
+    const hours = Math.floor(seconds / 3600);
+    seconds %= 3600;
+    const minutes = Math.floor(seconds / 60);
+    seconds = Math.floor(seconds % 60);
+    return `${days}j ${hours}h ${minutes}m ${seconds}s`;
   }
 }

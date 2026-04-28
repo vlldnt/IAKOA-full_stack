@@ -27,9 +27,6 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  /**
-   * POST /auth/register - Inscription d'un nouvel utilisateur
-   */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -56,9 +53,6 @@ export class AuthController {
     return this.authService.register(registerUserDto);
   }
 
-  /**
-   * POST /auth/login - Connexion utilisateur
-   */
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -83,9 +77,6 @@ export class AuthController {
     return this.authService.login(loginUserDto);
   }
 
-  /**
-   * POST /auth/refresh - Rafraîchir l'access token
-   */
   @Post('refresh')
   @UseGuards(JwtRefreshAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -110,9 +101,6 @@ export class AuthController {
     return this.authService.refreshTokens(user.id);
   }
 
-  /**
-   * POST /auth/logout - Déconnexion utilisateur
-   */
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -127,9 +115,6 @@ export class AuthController {
     return this.authService.logout(user.id);
   }
 
-  /**
-   * GET /auth/google - Initier l'authentification Google
-   */
   @Get('google')
   @UseGuards(GoogleOAuthGuard)
   @ApiOperation({
@@ -137,13 +122,8 @@ export class AuthController {
     description: 'Redirige vers la page de connexion Google',
   })
   @ApiResponse({ status: 302, description: 'Redirection vers Google' })
-  async googleAuth() {
-    // La redirection est gérée automatiquement par le guard
-  }
+  async googleAuth() {}
 
-  /**
-   * GET /auth/google/callback - Callback OAuth Google
-   */
   @Get('google/callback')
   @UseGuards(GoogleOAuthGuard)
   @ApiOperation({
@@ -161,9 +141,6 @@ export class AuthController {
     );
   }
 
-  /**
-   * GET /auth/facebook - Initier l'authentification Facebook
-   */
   @Get('facebook')
   @UseGuards(FacebookOAuthGuard)
   @ApiOperation({
@@ -171,13 +148,8 @@ export class AuthController {
     description: 'Redirige vers la page de connexion Facebook',
   })
   @ApiResponse({ status: 302, description: 'Redirection vers Facebook' })
-  async facebookAuth() {
-    // La redirection est gérée automatiquement par le guard
-  }
+  async facebookAuth() {}
 
-  /**
-   * GET /auth/facebook/callback - Callback OAuth Facebook
-   */
   @Get('facebook/callback')
   @UseGuards(FacebookOAuthGuard)
   @ApiOperation({

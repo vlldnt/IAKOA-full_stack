@@ -15,7 +15,6 @@ export class AuthService {
   ) {}
 
   async register(registerUserDto: RegisterUserDto) {
-    // Créer l'utilisateur avec isCreator défini à false par défaut
     const user = await this.usersService.create({
       ...registerUserDto,
       isCreator: false,
@@ -70,11 +69,11 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_SECRET || 'votre-secret-super-securise-a-changer',
-        expiresIn: '15m', // Token court pour la sécurité
+        expiresIn: '15m',
       }),
       this.jwtService.signAsync(payload, {
         secret: process.env.JWT_REFRESH_SECRET || 'votre-refresh-secret-super-securise',
-        expiresIn: '30d', // Refresh token valide 30 jours
+        expiresIn: '30d',
       }),
     ]);
 
@@ -137,7 +136,6 @@ export class AuthService {
     avatar?: string;
   }) {
     try {
-      // Chercher l'utilisateur par provider et providerId
       let user = await this.prisma.user.findUnique({
         where: {
           provider_providerId: {
@@ -147,7 +145,6 @@ export class AuthService {
         },
       });
 
-      // Si l'utilisateur n'existe pas, le créer
       if (!user) {
         user = await this.prisma.user.create({
           data: {
@@ -156,12 +153,10 @@ export class AuthService {
             email: oauthData.email,
             name: oauthData.name,
             avatar: oauthData.avatar,
-            // Pas de password pour les utilisateurs OAuth
             isCreator: false,
           },
         });
       } else {
-        // Mettre à jour l'avatar si fourni (au cas où il a changé)
         if (oauthData.avatar && user.avatar !== oauthData.avatar) {
           user = await this.prisma.user.update({
             where: { id: user.id },

@@ -1,11 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
 @import "tailwindcss";
+@plugin "daisyui";
 
 @theme {
   --color-iakoa-blue: #2397FF;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
-  font-family: Calibri, Arial, sans-serif;
+  font-family: 'Varela Round', Calibri, 'Segoe UI', sans-serif;
 }
 
 @keyframes user-breathe {

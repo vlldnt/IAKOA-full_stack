@@ -7,8 +7,6 @@ type AppProviderProps = {
   children: React.ReactNode;
 };
 
-// Fournisseur principal de l'application
-// Encapsule le store Redux et le routeur React Router
 export function AppProvider({ children }: AppProviderProps) {
   return (
     <StrictMode>
