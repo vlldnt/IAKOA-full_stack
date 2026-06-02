@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { SwaggerConfig } from './swagger';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
@@ -12,6 +13,9 @@ async function bootstrap() {
 
   // En-têtes de sécurité HTTP (CSP, HSTS, X-Frame-Options, noSniff, etc.)
   app.use(helmet());
+
+  // Parse les cookies (authentification via cookies HttpOnly).
+  app.use(cookieParser());
 
   // Exception filter global pour logger les erreurs
   app.useGlobalFilters(new HttpExceptionFilter());

@@ -8,10 +8,22 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import type { Response } from 'express';
+import type { LoginUserDto } from '../users/dto/login-user.dto';
+import type { RegisterUserDto } from '../users/dto/register-user.dto';
 
 describe('AuthController', () => {
   let authController: AuthController;
   let prismaService: PrismaService;
+
+  // Réponse Express simulée : capte les cookies sans les écrire réellement.
+  const mockRes = { cookie: jest.fn(), clearCookie: jest.fn() } as unknown as Response;
+
+  // Wrappers injectant la réponse simulée, pour garder les tests concis.
+  const callRegister = (dto: RegisterUserDto) => authController.register(dto, mockRes);
+  const callLogin = (dto: LoginUserDto) => authController.login(dto, mockRes);
+  const callRefresh = (user: UserResponseDto) => authController.refreshTokens(user, mockRes);
+  const callLogout = (user: UserResponseDto) => authController.logout(user, mockRes);
 
   // Fonctions utilitaires pour nettoyer la base de données
   async function cleanDatabase() {
@@ -53,7 +65,7 @@ describe('AuthController', () => {
   describe('register', () => {
     // Test 1: devrait inscrire un nouvel utilisateur
     it('devrait inscrire un nouvel utilisateur', async () => {
-      const result = await authController.register(testUser);
+      const result = await callRegister(testUser);
 
       expect(result).toHaveProperty('user');
       expect(result).toHaveProperty('access_token');
@@ -65,7 +77,7 @@ describe('AuthController', () => {
 
     // Test 2: ne devrait pas retourner le mot de passe
     it('ne devrait pas retourner le mot de passe', async () => {
-      const result = await authController.register({
+      const result = await callRegister({
         ...testUser,
         email: 'nopassword@example.com',
       });
@@ -76,14 +88,14 @@ describe('AuthController', () => {
 
     // Test 3: devrait rejeter une inscription avec un email en double
     it('devrait rejeter une inscription avec un email en double', async () => {
-      await authController.register(testUser);
+      await callRegister(testUser);
 
-      await expect(authController.register(testUser)).rejects.toThrow();
+      await expect(callRegister(testUser)).rejects.toThrow();
     });
 
     // Test 4: les tokens générés devraient être des chaînes non vides
     it('les tokens générés devraient être des chaînes non vides', async () => {
-      const result = await authController.register({
+      const result = await callRegister({
         ...testUser,
         email: 'tokens@example.com',
       });
@@ -99,12 +111,12 @@ describe('AuthController', () => {
   describe('login', () => {
     beforeEach(async () => {
       // Créer un utilisateur pour les tests de login
-      await authController.register(testUser);
+      await callRegister(testUser);
     });
 
     // Test 5: devrait connecter un utilisateur avec des identifiants valides
     it('devrait connecter un utilisateur avec des identifiants valides', async () => {
-      const result = await authController.login({
+      const result = await callLogin({
         email: testUser.email,
         password: testUser.password,
       });
@@ -118,7 +130,7 @@ describe('AuthController', () => {
     // Test 6: devrait rejeter une connexion avec un email invalide
     it('devrait rejeter une connexion avec un email invalide', async () => {
       await expect(
-        authController.login({
+        callLogin({
           email: 'wrong@example.com',
           password: testUser.password,
         }),
@@ -128,7 +140,7 @@ describe('AuthController', () => {
     // Test 7: devrait rejeter une connexion avec un mot de passe invalide
     it('devrait rejeter une connexion avec un mot de passe invalide', async () => {
       await expect(
-        authController.login({
+        callLogin({
           email: testUser.email,
           password: 'WrongPassword123!',
         }),
@@ -137,7 +149,7 @@ describe('AuthController', () => {
 
     // Test 8: ne devrait pas retourner le mot de passe
     it('ne devrait pas retourner le mot de passe', async () => {
-      const result = await authController.login({
+      const result = await callLogin({
         email: testUser.email,
         password: testUser.password,
       });
@@ -148,7 +160,7 @@ describe('AuthController', () => {
 
     // Test 9: devrait générer de nouveaux tokens à chaque connexion
     it('devrait générer de nouveaux tokens à chaque connexion', async () => {
-      const result1 = await authController.login({
+      const result1 = await callLogin({
         email: testUser.email,
         password: testUser.password,
       });
@@ -156,7 +168,7 @@ describe('AuthController', () => {
       // Attendre 1 seconde pour que les timestamps JWT soient différents
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const result2 = await authController.login({
+      const result2 = await callLogin({
         email: testUser.email,
         password: testUser.password,
       });
@@ -171,7 +183,7 @@ describe('AuthController', () => {
     let mockUser: UserResponseDto;
 
     beforeEach(async () => {
-      const result = await authController.register({
+      const result = await callRegister({
         ...testUser,
         email: 'refresh-controller@example.com',
       });
@@ -180,7 +192,7 @@ describe('AuthController', () => {
 
     // Test 10: devrait rafraîchir les tokens
     it('devrait rafraîchir les tokens', async () => {
-      const result = await authController.refreshTokens(mockUser);
+      const result = await callRefresh(mockUser);
 
       expect(result).toHaveProperty('access_token');
       expect(result).toHaveProperty('refresh_token');
@@ -190,12 +202,12 @@ describe('AuthController', () => {
 
     // Test 11: devrait générer de nouveaux tokens
     it('devrait générer de nouveaux tokens', async () => {
-      const result1 = await authController.refreshTokens(mockUser);
+      const result1 = await callRefresh(mockUser);
 
       // Attendre 1 seconde pour que les timestamps JWT soient différents
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const result2 = await authController.refreshTokens(mockUser);
+      const result2 = await callRefresh(mockUser);
 
       expect(result1.access_token).not.toBe(result2.access_token);
       expect(result1.refresh_token).not.toBe(result2.refresh_token);
@@ -207,7 +219,7 @@ describe('AuthController', () => {
     let mockUser: UserResponseDto;
 
     beforeEach(async () => {
-      const result = await authController.register({
+      const result = await callRegister({
         ...testUser,
         email: 'logout-controller@example.com',
       });
@@ -216,7 +228,7 @@ describe('AuthController', () => {
 
     // Test 12: devrait déconnecter l'utilisateur
     it("devrait déconnecter l'utilisateur", async () => {
-      const result = await authController.logout(mockUser);
+      const result = await callLogout(mockUser);
 
       expect(result).toHaveProperty('message');
       expect(result.message).toBe('Déconnexion réussie');
@@ -224,7 +236,7 @@ describe('AuthController', () => {
 
     // Test 13: devrait supprimer le refresh token de la base de données
     it('devrait supprimer le refresh token de la base de données', async () => {
-      await authController.logout(mockUser);
+      await callLogout(mockUser);
 
       const user = await prismaService.user.findUnique({
         where: { id: mockUser.id },
@@ -236,8 +248,8 @@ describe('AuthController', () => {
 
     // Test 14: ne devrait pas échouer si appelé plusieurs fois
     it('ne devrait pas échouer si appelé plusieurs fois', async () => {
-      await authController.logout(mockUser);
-      const result = await authController.logout(mockUser);
+      await callLogout(mockUser);
+      const result = await callLogout(mockUser);
 
       expect(result).toHaveProperty('message');
     });
@@ -248,7 +260,7 @@ describe('AuthController', () => {
     // Test 15: devrait gérer le cycle complet: inscription -> connexion -> refresh -> déconnexion
     it('devrait gérer le cycle complet: inscription -> connexion -> refresh -> déconnexion', async () => {
       // 1. Inscription
-      const registerResult = await authController.register({
+      const registerResult = await callRegister({
         ...testUser,
         email: 'fullcycle@example.com',
       });
@@ -258,7 +270,7 @@ describe('AuthController', () => {
       expect(registerResult).toHaveProperty('refresh_token');
 
       // 2. Connexion
-      const loginResult = await authController.login({
+      const loginResult = await callLogin({
         email: 'fullcycle@example.com',
         password: testUser.password,
       });
@@ -267,13 +279,13 @@ describe('AuthController', () => {
       expect(loginResult).toHaveProperty('access_token');
 
       // 3. Refresh
-      const refreshResult = await authController.refreshTokens(loginResult.user);
+      const refreshResult = await callRefresh(loginResult.user);
 
       expect(refreshResult).toHaveProperty('access_token');
       expect(refreshResult).toHaveProperty('refresh_token');
 
       // 4. Déconnexion
-      const logoutResult = await authController.logout(loginResult.user);
+      const logoutResult = await callLogout(loginResult.user);
 
       expect(logoutResult.message).toBe('Déconnexion réussie');
 

@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { UserType } from '@/lib/types/AuthType';
 import { isValidUser } from '@/utils/validators';
-import * as tokenService from '@/lib/services/tokenService';
+import { ApiError } from '@/lib/services/apiClient';
 import * as authService from '@/lib/services/authService';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -15,6 +15,7 @@ interface AuthResult {
   success: boolean;
   error?: string;
   message?: string;
+  user?: UserType;
 }
 
 // ── État initial ─────────────────────────────────────────────────────────────
@@ -26,65 +27,35 @@ const initialState: AuthState = {
 
 // ── Thunks asynchrones ───────────────────────────────────────────────────────
 
-// Vérifie et rafraîchit les informations utilisateur au chargement
-// Gère automatiquement le renouvellement des tokens expirés
+// Charge l'utilisateur courant au démarrage à partir du cookie de session.
+// Le rafraîchissement automatique du token (sur 401) est géré par le client API.
 export const refreshUser = createAsyncThunk<UserType | null>(
   'auth/refreshUser',
   async () => {
-    let token = tokenService.getAccessToken();
-    if (!token) return null;
-
     try {
-      let userData = await authService.getUserAPI(token);
-
-      // Si le token d'accès a expiré, tenter de le rafraîchir
-      if (!userData) {
-        const refreshToken = tokenService.getRefreshToken();
-        if (!refreshToken) {
-          tokenService.clearTokens();
-          return null;
-        }
-
-        const data = await authService.refreshTokensAPI(refreshToken);
-        if (data) {
-          tokenService.setTokens(data.access_token, data.refresh_token);
-          const newToken = tokenService.getAccessToken();
-          if (newToken) {
-            userData = await authService.getUserAPI(newToken);
-          }
-        }
-      }
-
-      if (userData) return userData;
-
-      tokenService.clearTokens();
-      return null;
+      return await authService.getUserAPI();
     } catch {
-      tokenService.clearTokens();
+      // Non authentifié ou session expirée : aucun utilisateur courant.
       return null;
     }
   }
 );
 
-// Connecte l'utilisateur avec email/password et stocke les tokens
+// Connecte l'utilisateur (les cookies de session sont posés par le serveur)
 export const login = createAsyncThunk<AuthResult, { email: string; password: string }>(
   'auth/login',
   async ({ email, password }) => {
     try {
-      const { response, data } = await authService.loginAPI(email, password);
-
-      if (response.ok) {
-        tokenService.setTokens(data.access_token, data.refresh_token);
-        return {
-          success: true,
-          message: `User: ${JSON.stringify(data.user.name)} bien connecté.`,
-          user: data.user,
-        };
-      }
-
-      return { success: false, error: data.message || 'La connection a échoué.' };
-    } catch {
-      return { success: false, error: 'Problème de réseau.' };
+      const data = await authService.loginAPI(email, password);
+      return {
+        success: true,
+        message: `${data.user.name} bien connecté.`,
+        user: data.user,
+      };
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'Problème de réseau.';
+      return { success: false, error: message };
     }
   }
 );
@@ -99,33 +70,29 @@ export const register = createAsyncThunk<AuthResult, { name: string; email: stri
     }
 
     try {
-      const { response, data } = await authService.registerAPI(name, email, password);
-
-      if (response.ok) {
-        tokenService.setTokens(data.access_token, data.refresh_token);
-        return {
-          success: true,
-          message: `${data.name}, votre compte a été créé avec succès.`,
-          user: data.user,
-        };
-      }
-
-      return { success: false, error: data.message || 'Impossibilité de créer un compte.' };
-    } catch {
-      return { success: false, error: 'Problème de réseau' };
+      const data = await authService.registerAPI(name, email, password);
+      return {
+        success: true,
+        message: `${data.user.name}, votre compte a été créé avec succès.`,
+        user: data.user,
+      };
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : 'Impossibilité de créer un compte.';
+      return { success: false, error: message };
     }
   }
 );
 
-// Déconnecte l'utilisateur et supprime les tokens
+// Déconnecte l'utilisateur (le serveur invalide le refresh token et efface les cookies)
 export const logout = createAsyncThunk<void>(
   'auth/logout',
   async () => {
-    const token = tokenService.getAccessToken();
-    if (token) {
-      await authService.logoutAPI(token);
+    try {
+      await authService.logoutAPI();
+    } catch {
+      // La déconnexion locale doit aboutir même si l'appel réseau échoue.
     }
-    tokenService.clearTokens();
   }
 );
 

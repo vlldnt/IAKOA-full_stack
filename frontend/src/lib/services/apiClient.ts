@@ -1,5 +1,3 @@
-import * as tokenService from './tokenService';
-
 /**
  * URL de base de l'API, configurable via la variable d'environnement Vite.
  * Valeur de repli sur l'instance locale de développement.
@@ -34,7 +32,10 @@ export class ApiError extends Error {
 export interface IRequestOptions extends Omit<RequestInit, 'body'> {
   /** Corps de requête : objet (sérialisé en JSON) ou `FormData` (multipart). */
   body?: unknown;
-  /** Désactive l'ajout automatique du header `Authorization`. */
+  /**
+   * Marque la requête comme publique. Conservé pour la lisibilité des services ;
+   * sans effet sur l'envoi des cookies (toujours `credentials: 'include'`).
+   */
   skipAuth?: boolean;
   /** Désactive la tentative de rafraîchissement automatique sur 401. */
   skipRefresh?: boolean;
@@ -49,50 +50,27 @@ export interface IRequestOptions extends Omit<RequestInit, 'body'> {
 let refreshPromise: Promise<boolean> | null = null;
 
 /**
- * Tente de renouveler les tokens via le refresh token.
+ * Tente de renouveler la session via le cookie de refresh token.
  *
- * Paramètres : aucun (lit le refresh token depuis le stockage local).
- * Retour : `true` si les tokens ont été renouvelés, `false` sinon.
+ * Paramètres : aucun (le refresh token est porté par un cookie HttpOnly).
+ * Retour : `true` si la session a été renouvelée, `false` sinon.
  * Cas d'utilisation : appelé automatiquement par `request` lorsqu'une réponse
  * authentifiée renvoie 401.
  * Pourquoi : centraliser la logique de refresh et garantir un seul appel
- * concurrent grâce au verrou `refreshPromise`.
+ * concurrent grâce au verrou `refreshPromise`. Les nouveaux tokens sont déposés
+ * par le serveur dans des cookies HttpOnly, jamais manipulés en JavaScript.
  */
 async function refreshTokens(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    const refreshToken = tokenService.getRefreshToken();
-    if (!refreshToken) return false;
-
     try {
       const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${refreshToken}`,
-        },
+        credentials: 'include',
       });
-
-      if (!res.ok) {
-        tokenService.clearTokens();
-        return false;
-      }
-
-      // Le backend renvoie les tokens en snake_case (access_token/refresh_token).
-      const data = (await res.json()) as {
-        access_token?: string;
-        refresh_token?: string;
-      };
-      if (!data.access_token || !data.refresh_token) {
-        tokenService.clearTokens();
-        return false;
-      }
-
-      tokenService.setTokens(data.access_token, data.refresh_token);
-      return true;
+      return res.ok;
     } catch {
-      tokenService.clearTokens();
       return false;
     } finally {
       refreshPromise = null;
@@ -103,13 +81,14 @@ async function refreshTokens(): Promise<boolean> {
 }
 
 /**
- * Construit les en-têtes HTTP d'une requête (JSON + Authorization).
+ * Construit les en-têtes HTTP d'une requête.
  *
  * Paramètres :
  * - `options` : options de la requête courante.
  * Retour : objet `Headers` prêt à l'emploi.
  * Pourquoi : factoriser la gestion du `Content-Type` (absent pour `FormData`,
- * géré automatiquement par le navigateur) et du token d'accès.
+ * géré automatiquement par le navigateur). L'authentification repose désormais
+ * sur les cookies HttpOnly, plus aucun token n'est ajouté en en-tête.
  */
 function buildHeaders(options: IRequestOptions): Headers {
   const headers = new Headers(options.headers);
@@ -117,11 +96,6 @@ function buildHeaders(options: IRequestOptions): Headers {
   const isFormData = options.body instanceof FormData;
   if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
-  }
-
-  if (!options.skipAuth) {
-    const token = tokenService.getAccessToken();
-    if (token) headers.set('Authorization', `Bearer ${token}`);
   }
 
   return headers;
@@ -171,6 +145,8 @@ export async function request<T>(path: string, options: IRequestOptions = {}): P
   const execute = (): Promise<Response> =>
     fetch(`${API_BASE_URL}${path}`, {
       ...init,
+      // Toujours envoyer les cookies HttpOnly d'authentification.
+      credentials: 'include',
       headers: buildHeaders({ body, skipAuth, ...init }),
       body: serializeBody(body),
     });

@@ -22,6 +22,7 @@ import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { FacebookOAuthGuard } from './guards/facebook-oauth.guard';
 import { GetUser } from './decorators/get-user.decorator';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { setAuthCookies, clearAuthCookies } from './utils/auth-cookies';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -51,8 +52,13 @@ export class AuthController {
   })
   @ApiResponse({ status: 400, description: 'Données invalides' })
   @ApiResponse({ status: 409, description: 'Email déjà utilisé' })
-  register(@Body(ValidationPipe) registerUserDto: RegisterUserDto) {
-    return this.authService.register(registerUserDto);
+  async register(
+    @Body(ValidationPipe) registerUserDto: RegisterUserDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(registerUserDto);
+    setAuthCookies(res, result);
+    return result;
   }
 
   @Post('login')
@@ -76,8 +82,13 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Identifiants invalides' })
-  login(@Body(ValidationPipe) loginUserDto: LoginUserDto) {
-    return this.authService.login(loginUserDto);
+  async login(
+    @Body(ValidationPipe) loginUserDto: LoginUserDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(loginUserDto);
+    setAuthCookies(res, result);
+    return result;
   }
 
   @Post('refresh')
@@ -101,8 +112,13 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 401, description: 'Refresh token invalide ou expiré' })
-  refreshTokens(@GetUser() user: UserResponseDto) {
-    return this.authService.refreshTokens(user.id);
+  async refreshTokens(
+    @GetUser() user: UserResponseDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refreshTokens(user.id);
+    setAuthCookies(res, tokens);
+    return tokens;
   }
 
   @Post('logout')
@@ -115,8 +131,13 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Déconnexion réussie' })
   @ApiResponse({ status: 401, description: 'Token invalide' })
-  logout(@GetUser() user: UserResponseDto) {
-    return this.authService.logout(user.id);
+  async logout(
+    @GetUser() user: UserResponseDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.logout(user.id);
+    clearAuthCookies(res);
+    return result;
   }
 
   @Get('google')
@@ -138,11 +159,11 @@ export class AuthController {
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const result = await this.authService.loginOAuth(req.user);
 
-    // Rediriger vers le frontend avec les tokens en query params
+    // Déposer les tokens dans des cookies HttpOnly puis rediriger (sans exposer
+    // les tokens dans l'URL, ce qui éviterait leur fuite via l'historique/logs).
+    setAuthCookies(res, result);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(
-      `${frontendUrl}/auth/callback?access_token=${result.access_token}&refresh_token=${result.refresh_token}`,
-    );
+    res.redirect(`${frontendUrl}/auth/callback`);
   }
 
   @Get('facebook')
@@ -164,10 +185,10 @@ export class AuthController {
   async facebookAuthCallback(@Req() req: Request, @Res() res: Response) {
     const result = await this.authService.loginOAuth(req.user);
 
-    // Rediriger vers le frontend avec les tokens en query params
+    // Déposer les tokens dans des cookies HttpOnly puis rediriger (sans exposer
+    // les tokens dans l'URL, ce qui éviterait leur fuite via l'historique/logs).
+    setAuthCookies(res, result);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(
-      `${frontendUrl}/auth/callback?access_token=${result.access_token}&refresh_token=${result.refresh_token}`,
-    );
+    res.redirect(`${frontendUrl}/auth/callback`);
   }
 }

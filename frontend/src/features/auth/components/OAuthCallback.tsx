@@ -1,44 +1,33 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/store/hooks';
 import { refreshUser } from '@/store/slices/authSlice';
-import * as tokenService from '@/lib/services/tokenService';
 
-// Page de callback OAuth pour Google et Facebook
-// Récupère les tokens depuis l'URL et connecte l'utilisateur via Redux
+// Page de callback OAuth pour Google et Facebook.
+// Les cookies de session ayant été posés par le backend lors de la redirection,
+// il suffit de charger l'utilisateur courant via Redux.
 export function OAuthCallback() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
-      // Récupérer les tokens depuis l'URL
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
-
-      if (!accessToken || !refreshToken) {
-        setError('Erreur lors de l\'authentification. Tokens manquants.');
-        setTimeout(() => navigate('/'), 3000);
-        return;
-      }
-
       try {
-        // Stocker les tokens puis rafraîchir l'utilisateur via Redux
-        tokenService.setTokens(accessToken, refreshToken);
-        await dispatch(refreshUser());
+        const result = await dispatch(refreshUser()).unwrap();
+        if (!result) {
+          throw new Error('Session introuvable');
+        }
         navigate('/');
       } catch {
         // L'erreur est remontée à l'utilisateur via l'état `error` ci-dessous.
         setError('Erreur lors de l\'authentification. Veuillez réessayer.');
-        tokenService.clearTokens();
         setTimeout(() => navigate('/'), 3000);
       }
     };
 
     handleOAuthCallback();
-  }, [searchParams, navigate, dispatch]);
+  }, [navigate, dispatch]);
 
   if (error) {
     return (
