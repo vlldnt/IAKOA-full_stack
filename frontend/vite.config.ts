@@ -27,5 +27,15 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Proxy de développement : le navigateur n'appelle que localhost:5173, Vite
+    // relaie « /api/* » vers le backend en local (évite les soucis réseau WSL2 et
+    // rend les requêtes same-origin → cookies/CORS simplifiés).
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })

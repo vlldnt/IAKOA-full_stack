@@ -11,6 +11,7 @@ import { EventsModule } from './events/events.module';
 import { MediaModule } from './media/media.module';
 import { UserFavoritesModule } from './user-favorites/user-favorites.module';
 import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
+import { CsrfMiddleware } from './middlewares/csrf.middleware';
 
 @Module({
   imports: [
@@ -30,6 +31,6 @@ import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+    consumer.apply(HttpLoggerMiddleware, CsrfMiddleware).forRoutes('*');
   }
 }

@@ -68,6 +68,7 @@ async function refreshTokens(): Promise<boolean> {
       const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
       return res.ok;
     } catch {
@@ -97,6 +98,10 @@ function buildHeaders(options: IRequestOptions): Headers {
   if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
+
+  // En-tête anti-CSRF : un site tiers ne peut pas le poser sur une requête
+  // « simple », et une requête cross-origin avec en-tête est bloquée par le CORS.
+  headers.set('X-Requested-With', 'XMLHttpRequest');
 
   return headers;
 }
