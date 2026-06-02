@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import iakoaLogo from '@/assets/logo-iakoa.svg';
-import login from '@/assets/images/login.png';
-import happy from '@/assets/images/happy.png';
+import login from '@/assets/images/login.webp';
+import happy from '@/assets/images/happy.webp';
 import MenuLink from '@/components/Header/components/MenuLink';
 import { LogIn } from 'lucide-react';
 

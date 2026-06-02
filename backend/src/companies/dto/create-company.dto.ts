@@ -37,6 +37,7 @@ export class CreateCompanyDto {
     maxLength: 300,
     required: false,
   })
+  @IsOptional()
   @IsString()
   @MaxLength(300, { message: 'La description ne peut pas dépasser 300 caractères' })
   description?: string;

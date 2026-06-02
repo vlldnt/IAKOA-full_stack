@@ -10,8 +10,8 @@ import { SearchBars } from "./components/SearchBar/SearchBar";
 import { LogIn, MapPin, X, Heart, Plus } from "lucide-react";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
-import login_img from '@/assets/images/login.png';
-import happy from '@/assets/images/happy.png';
+import login_img from '@/assets/images/login.webp';
+import happy from '@/assets/images/happy.webp';
 
 // Header principal de l'application
 // Contient la navigation, la barre de recherche et le modal d'authentification
