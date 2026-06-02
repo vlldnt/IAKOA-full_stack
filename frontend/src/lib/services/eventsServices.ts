@@ -1,10 +1,7 @@
-import type { EventType } from "@/lib/types/EventType";
-import * as tokenService from "./tokenService";
+import type { EventType } from '@/lib/types/EventType';
+import { api } from './apiClient';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-
-// Interface pour la réponse paginée
+/** Réponse paginée renvoyée par l'endpoint de liste des événements. */
 export interface PaginatedEventsResponse {
   data: EventType[];
   total: number;
@@ -13,27 +10,7 @@ export interface PaginatedEventsResponse {
   totalPages: number;
 }
 
-// Récupère tous les événements publics
-export async function fetchAllEvents(): Promise<EventType[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/events`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch events: ${res.statusText}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    throw error;
-  }
-}
-
-// Interface pour les paramètres de filtrage
+/** Paramètres de filtrage acceptés par l'endpoint paginé des événements. */
 export interface EventFilterParams {
   page?: number;
   limit?: number;
@@ -50,201 +27,113 @@ export interface EventFilterParams {
   isFree?: boolean;
 }
 
-// Récupère les événements avec pagination et filtres
-export async function fetchEventsPaginated(
-  page: number = 1,
-  limit: number = 12,
+/**
+ * Récupère tous les événements publics (sans pagination).
+ *
+ * Retour : la liste complète des événements.
+ * Cas d'utilisation : affichages legacy nécessitant l'ensemble des événements.
+ * Pourquoi : exposer un accès simple à la ressource publique `/events`.
+ */
+export function fetchAllEvents(): Promise<EventType[]> {
+  return api.get<EventType[]>('/events', { skipAuth: true });
+}
+
+/**
+ * Construit la chaîne de requête de filtrage des événements.
+ *
+ * Paramètres :
+ * - `page`, `limit` : pagination.
+ * - `filters` : critères optionnels (mots-clés, géolocalisation, dates, prix...).
+ * Retour : `URLSearchParams` prêt à être concaténé à l'URL.
+ * Pourquoi : isoler la logique de sérialisation des filtres pour garder
+ * `fetchEventsPaginated` lisible.
+ */
+function buildEventQuery(page: number, limit: number, filters?: EventFilterParams): URLSearchParams {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (filters?.keyword) params.append('keyword', filters.keyword);
+  if (filters?.latitude !== undefined) params.append('latitude', String(filters.latitude));
+  if (filters?.longitude !== undefined) params.append('longitude', String(filters.longitude));
+  if (filters?.radius !== undefined) params.append('radius', String(filters.radius));
+  if (filters?.categories?.length) params.append('categories', filters.categories.join(','));
+  if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+  if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+  if (filters?.priceMin !== undefined) params.append('priceMin', String(filters.priceMin));
+  if (filters?.priceMax !== undefined) params.append('priceMax', String(filters.priceMax));
+  if (filters?.isFree) params.append('isFree', 'true');
+  return params;
+}
+
+/**
+ * Récupère les événements avec pagination et filtres.
+ *
+ * Paramètres :
+ * - `page` : numéro de page (défaut 1).
+ * - `limit` : nombre d'éléments par page (défaut 12).
+ * - `filters` : critères de filtrage optionnels.
+ * Retour : la réponse paginée (données + métadonnées).
+ * Cas d'utilisation : liste principale des événements et recherche filtrée.
+ * Pourquoi : endpoint central d'exploration des événements côté front.
+ */
+export function fetchEventsPaginated(
+  page = 1,
+  limit = 12,
   filters?: EventFilterParams,
 ): Promise<PaginatedEventsResponse> {
-  try {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(limit),
-    });
-
-    // Ajouter les paramètres de filtrage s'ils existent
-    if (filters?.keyword) {
-      params.append("keyword", filters.keyword);
-    }
-    if (filters?.latitude !== undefined) {
-      params.append("latitude", String(filters.latitude));
-    }
-    if (filters?.longitude !== undefined) {
-      params.append("longitude", String(filters.longitude));
-    }
-    if (filters?.radius !== undefined) {
-      params.append("radius", String(filters.radius));
-    }
-    if (filters?.categories && filters.categories.length > 0) {
-      params.append("categories", filters.categories.join(","));
-    }
-    if (filters?.dateFrom) {
-      params.append("dateFrom", filters.dateFrom);
-    }
-    if (filters?.dateTo) {
-      params.append("dateTo", filters.dateTo);
-    }
-    if (filters?.priceMin !== undefined) {
-      params.append("priceMin", String(filters.priceMin));
-    }
-    if (filters?.priceMax !== undefined) {
-      params.append("priceMax", String(filters.priceMax));
-    }
-    if (filters?.isFree) {
-      params.append("isFree", "true");
-    }
-
-    const res = await fetch(`${API_BASE_URL}/events?${params}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch events: ${res.statusText}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    throw error;
-  }
+  return api.get<PaginatedEventsResponse>(`/events?${buildEventQuery(page, limit, filters)}`, {
+    skipAuth: true,
+  });
 }
 
-// Récupère un événement par ID (public)
-export async function fetchEventById(id: string): Promise<EventType> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch event: ${res.statusText}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Récupère un événement public par son identifiant.
+ *
+ * Paramètres : `id` — identifiant de l'événement.
+ * Retour : l'événement correspondant.
+ * Cas d'utilisation : page/modale de détail d'un événement.
+ */
+export function fetchEventById(id: string): Promise<EventType> {
+  return api.get<EventType>(`/events/${id}`, { skipAuth: true });
 }
 
-// Récupère tous les événements de l'utilisateur connecté
-export async function fetchMyEvents(): Promise<EventType[]> {
-  try {
-    const token = tokenService.getAccessToken();
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const res = await fetch(`${API_BASE_URL}/events/my-events`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch my events: ${res.statusText}`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Récupère les événements appartenant à l'utilisateur connecté.
+ *
+ * Retour : la liste des événements de l'utilisateur.
+ * Cas d'utilisation : section « Mes événements » du profil.
+ * Pourquoi : nécessite l'authentification, gérée automatiquement par le client.
+ */
+export function fetchMyEvents(): Promise<EventType[]> {
+  return api.get<EventType[]>('/events/my-events');
 }
 
-// Crée un nouvel événement
-export async function createEvent(
-  eventData: Omit<EventType, "id">,
-): Promise<EventType> {
-  try {
-    const token = tokenService.getAccessToken();
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const res = await fetch(`${API_BASE_URL}/events`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(eventData),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to create event: ${res.statusText}`,
-      );
-    }
-
-    return await res.json();
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Crée un nouvel événement.
+ *
+ * Paramètres : `eventData` — données de l'événement (sans `id`).
+ * Retour : l'événement créé.
+ * Cas d'utilisation : formulaire de création d'événement.
+ */
+export function createEvent(eventData: Omit<EventType, 'id'>): Promise<EventType> {
+  return api.post<EventType>('/events', eventData);
 }
 
-// Met à jour un événement
-export async function updateEvent(
-  id: string,
-  eventData: Partial<EventType>,
-): Promise<EventType> {
-  try {
-    const token = tokenService.getAccessToken();
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(eventData),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to update event: ${res.statusText}`,
-      );
-    }
-
-    return await res.json();
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Met à jour un événement existant.
+ *
+ * Paramètres : `id` — identifiant ; `eventData` — champs à modifier.
+ * Retour : l'événement mis à jour.
+ * Cas d'utilisation : édition d'un événement par son propriétaire.
+ */
+export function updateEvent(id: string, eventData: Partial<EventType>): Promise<EventType> {
+  return api.patch<EventType>(`/events/${id}`, eventData);
 }
 
-// Supprime un événement
-export async function deleteEvent(id: string): Promise<void> {
-  try {
-    const token = tokenService.getAccessToken();
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `Failed to delete event: ${res.statusText}`,
-      );
-    }
-  } catch (error) {
-    throw error;
-  }
+/**
+ * Supprime un événement.
+ *
+ * Paramètres : `id` — identifiant de l'événement.
+ * Cas d'utilisation : suppression d'un événement par son propriétaire.
+ */
+export function deleteEvent(id: string): Promise<void> {
+  return api.delete<void>(`/events/${id}`);
 }

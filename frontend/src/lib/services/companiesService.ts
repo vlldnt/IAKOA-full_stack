@@ -1,7 +1,6 @@
-import * as tokenService from './tokenService';
+import { api } from './apiClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
+/** Représentation d'une entreprise côté front. */
 export interface CompanyType {
   id: string;
   name: string;
@@ -12,6 +11,7 @@ export interface CompanyType {
   ownerId: string;
 }
 
+/** Réseaux sociaux optionnels associés à une entreprise. */
 export interface SocialNetworks {
   facebook?: string;
   instagram?: string;
@@ -20,6 +20,7 @@ export interface SocialNetworks {
   tiktok?: string;
 }
 
+/** Données nécessaires à la création d'une entreprise. */
 export interface CreateCompanyPayload {
   name: string;
   siren: string;
@@ -28,108 +29,69 @@ export interface CreateCompanyPayload {
   socialNetworks?: SocialNetworks;
 }
 
-// Récupère les entreprises de l'utilisateur connecté
-export async function fetchMyCompanies(): Promise<CompanyType[]> {
-  const token = tokenService.getAccessToken();
-  if (!token) throw new Error('Non authentifié');
-
-  const res = await fetch(`${API_BASE_URL}/companies/my-companies`, {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Erreur lors de la récupération des entreprises : ${res.statusText}`);
-  }
-
-  return await res.json();
+/**
+ * Supprime les réseaux sociaux vides d'un payload entreprise.
+ *
+ * Paramètres : `socialNetworks` — réseaux sociaux saisis (potentiellement vides).
+ * Retour : un objet ne contenant que les réseaux renseignés, ou `undefined`.
+ * Pourquoi : éviter d'envoyer des champs vides au backend et factoriser le
+ * nettoyage utilisé à la création et à la mise à jour.
+ */
+function cleanSocialNetworks(socialNetworks?: SocialNetworks): SocialNetworks | undefined {
+  if (!socialNetworks) return undefined;
+  const filled = Object.fromEntries(
+    Object.entries(socialNetworks).filter(([, value]) => value && value.trim() !== ''),
+  );
+  return Object.keys(filled).length > 0 ? filled : undefined;
 }
 
-// Crée une nouvelle entreprise (isCreator requis)
-export async function createCompany(payload: CreateCompanyPayload): Promise<CompanyType> {
-  const token = tokenService.getAccessToken();
-  if (!token) throw new Error('Non authentifié');
+/**
+ * Récupère les entreprises de l'utilisateur connecté.
+ *
+ * Retour : la liste des entreprises possédées par l'utilisateur.
+ * Cas d'utilisation : section « Mes entreprises » du profil.
+ */
+export function fetchMyCompanies(): Promise<CompanyType[]> {
+  return api.get<CompanyType[]>('/companies/my-companies');
+}
 
-  // Nettoyer les réseaux sociaux vides avant envoi
-  const socialNetworks = payload.socialNetworks
-    ? Object.fromEntries(
-        Object.entries(payload.socialNetworks).filter(([, v]) => v && v.trim() !== '')
-      )
-    : undefined;
-
-  const body = {
+/**
+ * Crée une nouvelle entreprise (nécessite le statut créateur).
+ *
+ * Paramètres : `payload` — données de l'entreprise.
+ * Retour : l'entreprise créée.
+ * Cas d'utilisation : formulaire de création d'entreprise.
+ */
+export function createCompany(payload: CreateCompanyPayload): Promise<CompanyType> {
+  return api.post<CompanyType>('/companies', {
     ...payload,
-    socialNetworks: socialNetworks && Object.keys(socialNetworks).length > 0
-      ? socialNetworks
-      : undefined,
-  };
-
-  const res = await fetch(`${API_BASE_URL}/companies`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
+    socialNetworks: cleanSocialNetworks(payload.socialNetworks),
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Erreur lors de la création de l'entreprise : ${res.statusText}`);
-  }
-
-  return await res.json();
 }
 
-// Met à jour une entreprise (propriétaire uniquement)
-export async function updateCompany(
+/**
+ * Met à jour une entreprise (propriétaire uniquement).
+ *
+ * Paramètres : `id` — identifiant ; `payload` — champs à modifier.
+ * Retour : l'entreprise mise à jour.
+ * Cas d'utilisation : édition d'une entreprise existante.
+ */
+export function updateCompany(
   id: string,
-  payload: Partial<CreateCompanyPayload>
+  payload: Partial<CreateCompanyPayload>,
 ): Promise<CompanyType> {
-  const token = tokenService.getAccessToken();
-  if (!token) throw new Error('Non authentifié');
-
-  const socialNetworks = payload.socialNetworks
-    ? Object.fromEntries(
-        Object.entries(payload.socialNetworks).filter(([, v]) => v && v.trim() !== '')
-      )
-    : undefined;
-
-  const body = {
+  return api.patch<CompanyType>(`/companies/${id}`, {
     ...payload,
-    socialNetworks: socialNetworks && Object.keys(socialNetworks).length > 0
-      ? socialNetworks
-      : undefined,
-  };
-
-  const res = await fetch(`${API_BASE_URL}/companies/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body),
+    socialNetworks: cleanSocialNetworks(payload.socialNetworks),
   });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Erreur lors de la mise à jour : ${res.statusText}`);
-  }
-
-  return await res.json();
 }
 
-// Supprime une entreprise (propriétaire uniquement)
-export async function deleteCompany(id: string): Promise<void> {
-  const token = tokenService.getAccessToken();
-  if (!token) throw new Error('Non authentifié');
-
-  const res = await fetch(`${API_BASE_URL}/companies/${id}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Erreur lors de la suppression : ${res.statusText}`);
-  }
+/**
+ * Supprime une entreprise (propriétaire uniquement).
+ *
+ * Paramètres : `id` — identifiant de l'entreprise.
+ * Cas d'utilisation : suppression d'une entreprise par son propriétaire.
+ */
+export function deleteCompany(id: string): Promise<void> {
+  return api.delete<void>(`/companies/${id}`);
 }

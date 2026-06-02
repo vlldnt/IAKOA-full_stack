@@ -1,18 +1,29 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 import { UsersService } from '../users/users.service';
 import { LoginUserDto } from '../users/dto/login-user.dto';
 import { RegisterUserDto } from '../users/dto/register-user.dto';
 import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
+import { AuthRepository } from './repositories/auth.repository';
+
+/** Nombre de tours de salage bcrypt pour le hachage des refresh tokens. */
+const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private prisma: PrismaService,
+    private authRepository: AuthRepository,
   ) {}
+
+  /** Indique si l'erreur Prisma est un enregistrement absent (P2025). */
+  private isRecordNotFoundError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025';
+  }
 
   async register(registerUserDto: RegisterUserDto) {
     const user = await this.usersService.create({
@@ -49,14 +60,11 @@ export class AuthService {
 
   async logout(userId: string) {
     try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { refreshToken: null },
-      });
+      await this.authRepository.setRefreshToken(userId, null);
 
       return { message: 'Déconnexion réussie' };
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (this.isRecordNotFoundError(error)) {
         throw new UnauthorizedException('Utilisateur non trouvé');
       }
       throw error;
@@ -84,15 +92,12 @@ export class AuthService {
   }
 
   private async updateRefreshToken(userId: string, refreshToken: string) {
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, BCRYPT_ROUNDS);
 
     try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { refreshToken: hashedRefreshToken },
-      });
+      await this.authRepository.setRefreshToken(userId, hashedRefreshToken);
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (this.isRecordNotFoundError(error)) {
         throw new UnauthorizedException('Utilisateur non trouvé');
       }
       throw error;
@@ -101,9 +106,7 @@ export class AuthService {
 
   async validateRefreshToken(userId: string, refreshToken: string) {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
+      const user = await this.authRepository.findById(userId);
 
       if (!user || !user.refreshToken) {
         throw new UnauthorizedException('Accès refusé');
@@ -136,39 +139,28 @@ export class AuthService {
     avatar?: string;
   }) {
     try {
-      let user = await this.prisma.user.findUnique({
-        where: {
-          provider_providerId: {
-            provider: oauthData.provider,
-            providerId: oauthData.providerId,
-          },
-        },
-      });
+      let user = await this.authRepository.findByProvider(
+        oauthData.provider,
+        oauthData.providerId,
+      );
 
       if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            provider: oauthData.provider,
-            providerId: oauthData.providerId,
-            email: oauthData.email,
-            name: oauthData.name,
-            avatar: oauthData.avatar,
-            isCreator: false,
-          },
+        user = await this.authRepository.createOAuthUser({
+          provider: oauthData.provider,
+          providerId: oauthData.providerId,
+          email: oauthData.email,
+          name: oauthData.name,
+          avatar: oauthData.avatar,
+          isCreator: false,
         });
-      } else {
-        if (oauthData.avatar && user.avatar !== oauthData.avatar) {
-          user = await this.prisma.user.update({
-            where: { id: user.id },
-            data: { avatar: oauthData.avatar },
-          });
-        }
+      } else if (oauthData.avatar && user.avatar !== oauthData.avatar) {
+        user = await this.authRepository.updateAvatar(user.id, oauthData.avatar);
       }
 
       return user;
     } catch (error) {
-      console.error('[OAuth] validateOAuthUser error:', error);
-      throw new UnauthorizedException('Erreur lors de l\'authentification OAuth');
+      this.logger.error('[OAuth] validateOAuthUser error', error as Error);
+      throw new UnauthorizedException("Erreur lors de l'authentification OAuth");
     }
   }
 

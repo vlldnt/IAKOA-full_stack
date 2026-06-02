@@ -36,15 +36,7 @@ import {
   setDateRange as setGlobalDateRange,
   setPrice as setGlobalPrice,
 } from '@/store/slices/filtersSlice';
-
-// Type pour les résultats de l'API géographique française
-interface CityResult {
-  name: string;
-  region: string;
-  lat: number;
-  lon: number;
-  postcode?: string;
-}
+import { searchCities, type ICityResult as CityResult } from '@/lib/services/cityService';
 
 // Mapping des IDs de sous-catégories à leurs icônes Lucide
 const SUBCATEGORY_ICONS: Record<string, React.ComponentType<any>> = {
@@ -245,34 +237,11 @@ export function FilterMenu({
     );
   };
 
-  // Recherche de villes via l'API géographique française
-  const searchCities = async (query: string) => {
-    if (query.length < 2) {
-      setShowCitySuggestions(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement&boost=population&limit=5`,
-      );
-      const data = await response.json();
-
-      const cities: CityResult[] = data.map((item: any) => ({
-        name: item.nom,
-        region: item.departement?.nom || '',
-        lat: item.centre?.coordinates?.[1] || 0,
-        lon: item.centre?.coordinates?.[0] || 0,
-        postcode: item.codesPostaux?.[0],
-      }));
-
-      setCitySuggestions(cities);
-      setShowCitySuggestions(cities.length > 0);
-    } catch (error) {
-      console.error('Erreur lors de la recherche de villes:', error);
-      setCitySuggestions([]);
-      setShowCitySuggestions(false);
-    }
+  // Charge les suggestions de villes via le service dédié
+  const loadCitySuggestions = async (query: string) => {
+    const cities = await searchCities(query);
+    setCitySuggestions(cities);
+    setShowCitySuggestions(cities.length > 0);
   };
 
   const handleCitySearch = (value: string) => {
@@ -281,7 +250,7 @@ export function FilterMenu({
     }
 
     citySearchTimeoutRef.current = setTimeout(() => {
-      searchCities(value);
+      loadCitySuggestions(value);
     }, 300);
   };
 
@@ -420,7 +389,7 @@ export function FilterMenu({
                   }}
                   onFocus={() => {
                     setCityFocused(true);
-                    if (city.length >= 2) searchCities(city);
+                    if (city.length >= 2) loadCitySuggestions(city);
                   }}
                   onBlur={() => {
                     setTimeout(() => {

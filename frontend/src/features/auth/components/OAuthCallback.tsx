@@ -29,8 +29,8 @@ export function OAuthCallback() {
         tokenService.setTokens(accessToken, refreshToken);
         await dispatch(refreshUser());
         navigate('/');
-      } catch (err) {
-        console.error('Erreur lors de l\'authentification OAuth:', err);
+      } catch {
+        // L'erreur est remontée à l'utilisateur via l'état `error` ci-dessous.
         setError('Erreur lors de l\'authentification. Veuillez réessayer.');
         tokenService.clearTokens();
         setTimeout(() => navigate('/'), 3000);

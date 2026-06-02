@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
+import { UsersRepository } from './repositories/users.repository';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConflictException } from '@nestjs/common/exceptions/conflict.exception';
 import { validate } from 'class-validator';
@@ -23,7 +24,7 @@ describe('UsersService', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, PrismaService],
+      providers: [UsersService, UsersRepository, PrismaService],
     }).compile();
 
     usersService = module.get<UsersService>(UsersService);

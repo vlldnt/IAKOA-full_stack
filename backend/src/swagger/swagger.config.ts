@@ -1,7 +1,9 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 export class SwaggerConfig {
+  private static readonly logger = new Logger(SwaggerConfig.name);
+
   static setup(app: INestApplication, path: string = 'api/docs'): void {
     const config = new DocumentBuilder()
       .setTitle('IAKOA Backend API')
@@ -43,7 +45,7 @@ export class SwaggerConfig {
       customfavIcon: 'https://nestjs.com/img/logo-small.svg',
     });
 
-    console.log(
+    this.logger.log(
       `📚 Swagger UI disponible sur: http://localhost:${process.env.PORT ?? 3000}/${path}`,
     );
   }

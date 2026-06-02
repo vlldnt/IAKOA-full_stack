@@ -1,12 +1,17 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { SwaggerConfig } from './swagger';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+
+  // En-têtes de sécurité HTTP (CSP, HSTS, X-Frame-Options, noSniff, etc.)
+  app.use(helmet());
 
   // Exception filter global pour logger les erreurs
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -31,8 +36,17 @@ async function bootstrap() {
   // Trust nginx reverse proxy headers
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
-  // Activer CORS
-  app.enableCors();
+  // CORS restreint à une liste blanche d'origines (séparées par des virgules
+  // dans CORS_ORIGINS), avec credentials pour préparer les cookies HttpOnly.
+  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
 
   // Configuration Swagger (uniquement en développement)
   if (SwaggerConfig.shouldEnable()) {
@@ -41,7 +55,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
-  console.log(`Application running on: http://localhost:${port}`);
-  console.log(`Swagger UI disponible sur: http://localhost:${port}/swagger`);
+  logger.log(`Application running on: http://localhost:${port}`);
+  logger.log(`Swagger UI disponible sur: http://localhost:${port}/swagger`);
 }
 bootstrap();

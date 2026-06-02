@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { UsersRepository } from '../users/repositories/users.repository';
+import { AuthRepository } from './repositories/auth.repository';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UnauthorizedException } from '@nestjs/common';
@@ -29,7 +31,7 @@ describe('AuthController', () => {
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [AuthService, UsersService, JwtService, PrismaService],
+      providers: [AuthService, AuthRepository, UsersService, UsersRepository, JwtService, PrismaService],
     }).compile();
 
     await module.init();

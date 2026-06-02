@@ -10,15 +10,25 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { EventResponseDto } from './dto/event-response.dto';
 import { FilterEventsDto } from './dto/filter-events.dto';
 import { Prisma, Role } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { EventsRepository } from './repositories/events.repository';
 import { MediaService } from 'src/media/media.service';
 
 @Injectable()
 export class EventsService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly eventsRepository: EventsRepository,
     private readonly mediaService: MediaService,
   ) {}
+
+  /** Indique si l'erreur Prisma est une violation d'unicité (P2002). */
+  private isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
+
+  /** Indique si l'erreur Prisma est un enregistrement absent (P2025). */
+  private isRecordNotFoundError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025';
+  }
 
   async create(
     createEventDto: CreateEventDto,
@@ -26,9 +36,7 @@ export class EventsService {
     userId: string,
   ): Promise<EventResponseDto> {
     // Vérifier que la company existe et que l'utilisateur en est le propriétaire
-    const company = await this.prisma.company.findUnique({
-      where: { id: companyId },
-    });
+    const company = await this.eventsRepository.findCompany(companyId);
 
     if (!company) {
       throw new NotFoundException(`Entreprise avec l'ID ${companyId} non trouvée.`);
@@ -42,19 +50,17 @@ export class EventsService {
 
     try {
       // Créer l'événement
-      const event = await this.prisma.event.create({
-        data: {
-          name: createEventDto.name,
-          date: createEventDto.date,
-          description: createEventDto.description,
-          pricing: createEventDto.pricing,
-          location: createEventDto.location
-            ? JSON.parse(JSON.stringify(createEventDto.location))
-            : undefined,
-          companyId: companyId,
-          website: createEventDto.website,
-          categories: createEventDto.categories || [],
-        },
+      const event = await this.eventsRepository.create({
+        name: createEventDto.name,
+        date: createEventDto.date,
+        description: createEventDto.description,
+        pricing: createEventDto.pricing,
+        location: createEventDto.location
+          ? JSON.parse(JSON.stringify(createEventDto.location))
+          : undefined,
+        companyId: companyId,
+        website: createEventDto.website,
+        categories: createEventDto.categories || [],
       });
 
       // Créer les médias si présents
@@ -63,10 +69,7 @@ export class EventsService {
       }
 
       // Récupérer l'événement avec les médias
-      const eventWithMedia = await this.prisma.event.findUnique({
-        where: { id: event.id },
-        include: { media: true },
-      });
+      const eventWithMedia = await this.eventsRepository.findByIdWithMedia(event.id);
 
       if (!eventWithMedia) {
         throw new InternalServerErrorException('Événement introuvable après création.');
@@ -77,7 +80,7 @@ export class EventsService {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
-      if (error.code === 'P2002') {
+      if (this.isUniqueConstraintError(error)) {
         throw new ConflictException(`Un événement avec ce nom ${createEventDto.name} existe déjà.`);
       }
       throw new InternalServerErrorException("Erreur lors de la création de l'événement.");
@@ -85,10 +88,7 @@ export class EventsService {
   }
 
   async findAll(): Promise<EventResponseDto[]> {
-    const events = await this.prisma.event.findMany({
-      include: { media: true, company: true },
-      orderBy: { date: 'desc' },
-    });
+    const events = await this.eventsRepository.findAll();
     return events.map(event => new EventResponseDto(event));
   }
 
@@ -159,11 +159,7 @@ export class EventsService {
     }
 
     // Récupérer tous les events qui matchent keyword + catégories
-    const allEvents = await this.prisma.event.findMany({
-      where,
-      include: { media: true, company: true },
-      orderBy: { date: 'desc' },
-    });
+    const allEvents = await this.eventsRepository.findMany(where);
 
     // Filtrer par distance si lat/lon fournis
     let filteredEvents = allEvents;
@@ -194,26 +190,12 @@ export class EventsService {
   }
 
   async findAllByOwner(userId: string): Promise<EventResponseDto[]> {
-    const events = await this.prisma.event.findMany({
-      where: {
-        company: {
-          ownerId: userId,
-        },
-      },
-      include: { media: true },
-      orderBy: { date: 'desc' },
-    });
+    const events = await this.eventsRepository.findByOwner(userId);
     return events.map(event => new EventResponseDto(event));
   }
 
   async findOnePublic(id: string): Promise<EventResponseDto> {
-    const event = await this.prisma.event.findUnique({
-      where: { id },
-      include: {
-        media: true,
-        company: true,
-      },
-    });
+    const event = await this.eventsRepository.findByIdWithMediaAndCompany(id);
 
     if (!event) {
       throw new NotFoundException(`Événement avec l'ID ${id} non trouvé.`);
@@ -223,13 +205,7 @@ export class EventsService {
   }
 
   async findOne(id: string, userId: string, userRole: Role): Promise<EventResponseDto> {
-    const event = await this.prisma.event.findUnique({
-      where: { id },
-      include: {
-        media: true,
-        company: true,
-      },
-    });
+    const event = await this.eventsRepository.findByIdWithMediaAndCompany(id);
 
     if (!event) {
       throw new NotFoundException(`Événement avec l'ID ${id} non trouvé.`);
@@ -249,10 +225,7 @@ export class EventsService {
     userId: string,
     userRole: Role,
   ): Promise<EventResponseDto> {
-    const event = await this.prisma.event.findUnique({
-      where: { id },
-      include: { company: true },
-    });
+    const event = await this.eventsRepository.findByIdWithCompany(id);
 
     if (!event) {
       throw new NotFoundException(`Événement avec l'ID ${id} non trouvé.`);
@@ -264,28 +237,24 @@ export class EventsService {
     }
 
     try {
-      const updatedEvent = await this.prisma.event.update({
-        where: { id },
-        data: {
-          name: updateEventDto.name ?? undefined,
-          date: updateEventDto.date ?? undefined,
-          description: updateEventDto.description ?? undefined,
-          pricing: updateEventDto.pricing ?? undefined,
-          location: updateEventDto.location
-            ? JSON.parse(JSON.stringify(updateEventDto.location))
-            : undefined,
-          website: updateEventDto.website ?? undefined,
-          categories: updateEventDto.categories ?? undefined,
-        },
-        include: { media: true },
+      const updatedEvent = await this.eventsRepository.update(id, {
+        name: updateEventDto.name ?? undefined,
+        date: updateEventDto.date ?? undefined,
+        description: updateEventDto.description ?? undefined,
+        pricing: updateEventDto.pricing ?? undefined,
+        location: updateEventDto.location
+          ? JSON.parse(JSON.stringify(updateEventDto.location))
+          : undefined,
+        website: updateEventDto.website ?? undefined,
+        categories: updateEventDto.categories ?? undefined,
       });
 
       return new EventResponseDto(updatedEvent);
     } catch (error) {
-      if (error.code === 'P2002') {
+      if (this.isUniqueConstraintError(error)) {
         throw new ConflictException(`Un événement avec ce nom existe déjà.`);
       }
-      if (error.code === 'P2025') {
+      if (this.isRecordNotFoundError(error)) {
         throw new NotFoundException(`Événement avec l'ID ${id} non trouvé.`);
       }
       throw new InternalServerErrorException("Erreur lors de la mise à jour de l'événement.");
@@ -293,10 +262,7 @@ export class EventsService {
   }
 
   async remove(id: string, userId: string, userRole: Role): Promise<{ message: string }> {
-    const event = await this.prisma.event.findUnique({
-      where: { id },
-      include: { company: true },
-    });
+    const event = await this.eventsRepository.findByIdWithCompany(id);
 
     if (!event) {
       throw new NotFoundException(`Événement avec l'ID ${id} non trouvé.`);
@@ -308,13 +274,11 @@ export class EventsService {
     }
 
     try {
-      await this.prisma.event.delete({
-        where: { id },
-      });
+      await this.eventsRepository.delete(id);
 
       return { message: `Événement ${event.name} supprimé avec succès.` };
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (this.isRecordNotFoundError(error)) {
         throw new NotFoundException(`Événement avec l'ID ${id} non trouvé.`);
       }
       throw new InternalServerErrorException("Erreur lors de la suppression de l'événement.");

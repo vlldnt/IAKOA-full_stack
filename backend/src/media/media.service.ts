@@ -6,12 +6,12 @@ import {
 } from '@nestjs/common';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { MediaResponseDto } from './dto/media-response.dto';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { MediaRepository } from './repositories/media.repository';
 import { Role } from '@prisma/client';
 
 @Injectable()
 export class MediaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly mediaRepository: MediaRepository) {}
 
   async createMany(
     createMediaDtos: CreateMediaDto[],
@@ -24,9 +24,7 @@ export class MediaService {
         eventId: eventId,
       }));
 
-      const createdMedia = await this.prisma.$transaction(
-        mediaData.map(data => this.prisma.media.create({ data })),
-      );
+      const createdMedia = await this.mediaRepository.createMany(mediaData);
 
       return createdMedia.map(media => new MediaResponseDto(media));
     } catch (error) {
@@ -37,18 +35,13 @@ export class MediaService {
   async findByEventIdPublic(eventId: string): Promise<MediaResponseDto[]> {
     try {
       // Vérifier que l'événement existe
-      const event = await this.prisma.event.findUnique({
-        where: { id: eventId },
-      });
+      const event = await this.mediaRepository.findEvent(eventId);
 
       if (!event) {
         throw new NotFoundException(`Événement avec l'ID ${eventId} non trouvé.`);
       }
 
-      const media = await this.prisma.media.findMany({
-        where: { eventId },
-        orderBy: { createdAt: 'asc' },
-      });
+      const media = await this.mediaRepository.findByEventId(eventId);
 
       return media.map(m => new MediaResponseDto(m));
     } catch (error) {
@@ -66,10 +59,7 @@ export class MediaService {
   ): Promise<MediaResponseDto[]> {
     try {
       // Vérifier que l'événement existe et récupérer la company associée
-      const event = await this.prisma.event.findUnique({
-        where: { id: eventId },
-        include: { company: true },
-      });
+      const event = await this.mediaRepository.findEventWithCompany(eventId);
 
       if (!event) {
         throw new NotFoundException(`Événement avec l'ID ${eventId} non trouvé.`);
@@ -82,10 +72,7 @@ export class MediaService {
         );
       }
 
-      const media = await this.prisma.media.findMany({
-        where: { eventId },
-        orderBy: { createdAt: 'asc' },
-      });
+      const media = await this.mediaRepository.findByEventId(eventId);
 
       return media.map(m => new MediaResponseDto(m));
     } catch (error) {

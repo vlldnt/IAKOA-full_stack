@@ -6,13 +6,19 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { UserFavoritesRepository } from './repositories/user-favorites.repository';
 import { CreateUserFavoriteDto } from './dto/create-user-favorite.dto';
 import { UserFavoriteResponseDto } from './dto/user-favorite-response.dto';
 
 @Injectable()
 export class UserFavoritesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly userFavoritesRepository: UserFavoritesRepository) {}
+
+  /** Indique si l'erreur Prisma est une violation d'unicité (P2002). */
+  private isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
 
   /**
    * Ajouter un événement aux favoris d'un utilisateur
@@ -25,9 +31,9 @@ export class UserFavoritesService {
       }
 
       // Vérifier que l'utilisateur existe
-      const userExists = await this.prisma.user.findUnique({
-        where: { id: createUserFavoriteDto.userId },
-      });
+      const userExists = await this.userFavoritesRepository.findUser(
+        createUserFavoriteDto.userId,
+      );
 
       if (!userExists) {
         throw new NotFoundException(
@@ -36,9 +42,9 @@ export class UserFavoritesService {
       }
 
       // Vérifier que l'événement existe
-      const eventExists = await this.prisma.event.findUnique({
-        where: { id: createUserFavoriteDto.eventId },
-      });
+      const eventExists = await this.userFavoritesRepository.findEvent(
+        createUserFavoriteDto.eventId,
+      );
 
       if (!eventExists) {
         throw new NotFoundException(
@@ -47,30 +53,17 @@ export class UserFavoritesService {
       }
 
       // Créer le favori
-      const favorite = await this.prisma.userFavorite.create({
-        data: {
-          userId: createUserFavoriteDto.userId,
-          eventId: createUserFavoriteDto.eventId,
-        },
-        include: {
-          event: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              isCreator: true,
-            },
-          },
-        },
-      });
+      const favorite = await this.userFavoritesRepository.create(
+        createUserFavoriteDto.userId,
+        createUserFavoriteDto.eventId,
+      );
 
       return new UserFavoriteResponseDto(favorite);
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
-      if (error.code === 'P2002') {
+      if (this.isUniqueConstraintError(error)) {
         throw new ConflictException(`L'utilisateur a déjà ajouté cet événement à ses favoris`);
       }
       throw new InternalServerErrorException("Erreur lors de l'ajout du favori");
@@ -83,23 +76,13 @@ export class UserFavoritesService {
   async findByUserId(userId: string): Promise<UserFavoriteResponseDto[]> {
     try {
       // Vérifier que l'utilisateur existe
-      const userExists = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
+      const userExists = await this.userFavoritesRepository.findUser(userId);
 
       if (!userExists) {
         throw new NotFoundException(`Utilisateur avec l'ID ${userId} non trouvé`);
       }
 
-      const favorites = await this.prisma.userFavorite.findMany({
-        where: { userId },
-        include: {
-          event: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      const favorites = await this.userFavoritesRepository.findByUserId(userId);
 
       return favorites.map(favorite => new UserFavoriteResponseDto(favorite));
     } catch (error) {
@@ -116,30 +99,13 @@ export class UserFavoritesService {
   async findByEventId(eventId: string): Promise<UserFavoriteResponseDto[]> {
     try {
       // Vérifier que l'événement existe
-      const eventExists = await this.prisma.event.findUnique({
-        where: { id: eventId },
-      });
+      const eventExists = await this.userFavoritesRepository.findEvent(eventId);
 
       if (!eventExists) {
         throw new NotFoundException(`Événement avec l'ID ${eventId} non trouvé`);
       }
 
-      const favorites = await this.prisma.userFavorite.findMany({
-        where: { eventId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              isCreator: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+      const favorites = await this.userFavoritesRepository.findByEventId(eventId);
 
       return favorites.map(favorite => new UserFavoriteResponseDto(favorite));
     } catch (error) {
@@ -155,14 +121,7 @@ export class UserFavoritesService {
    */
   async isFavorite(userId: string, eventId: string): Promise<boolean> {
     try {
-      const favorite = await this.prisma.userFavorite.findUnique({
-        where: {
-          userId_eventId: {
-            userId,
-            eventId,
-          },
-        },
-      });
+      const favorite = await this.userFavoritesRepository.findOne(userId, eventId);
 
       return !!favorite;
     } catch (error) {
@@ -176,14 +135,7 @@ export class UserFavoritesService {
   async remove(userId: string, eventId: string): Promise<{ message: string }> {
     try {
       // Vérifier que le favori existe
-      const favorite = await this.prisma.userFavorite.findUnique({
-        where: {
-          userId_eventId: {
-            userId,
-            eventId,
-          },
-        },
-      });
+      const favorite = await this.userFavoritesRepository.findOne(userId, eventId);
 
       if (!favorite) {
         throw new NotFoundException(
@@ -191,14 +143,7 @@ export class UserFavoritesService {
         );
       }
 
-      await this.prisma.userFavorite.delete({
-        where: {
-          userId_eventId: {
-            userId,
-            eventId,
-          },
-        },
-      });
+      await this.userFavoritesRepository.delete(userId, eventId);
 
       return { message: 'Favori supprimé avec succès' };
     } catch (error) {
@@ -214,9 +159,7 @@ export class UserFavoritesService {
    */
   async countByEventId(eventId: string): Promise<number> {
     try {
-      return await this.prisma.userFavorite.count({
-        where: { eventId },
-      });
+      return await this.userFavoritesRepository.countByEventId(eventId);
     } catch (error) {
       throw new InternalServerErrorException('Erreur lors du comptage des favoris');
     }
@@ -227,9 +170,7 @@ export class UserFavoritesService {
    */
   async removeAllByUserId(userId: string): Promise<{ message: string; count: number }> {
     try {
-      const result = await this.prisma.userFavorite.deleteMany({
-        where: { userId },
-      });
+      const result = await this.userFavoritesRepository.deleteAllByUserId(userId);
 
       return {
         message: "Tous les favoris de l'utilisateur ont été supprimés",
