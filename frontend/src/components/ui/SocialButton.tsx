@@ -21,6 +21,7 @@ export function SocialButton({
 }: SocialButtonProps) {
   return (
     <button
+      id={`social-button-${name.toLowerCase().replace(/['\s]+/g, '-')}`}
       type="button"
       disabled={disabled}
       onMouseEnter={() => onHover(true)}

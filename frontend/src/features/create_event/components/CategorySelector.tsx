@@ -8,7 +8,7 @@ interface CategorySelectorProps {
 
 export function CategorySelector({ selected, onToggle, error }: CategorySelectorProps) {
   return (
-    <div className="space-y-4">
+    <div id="category-selector" className="space-y-4">
       {FILTER_CATEGORY_GROUPS.map((group) => (
         <div key={group.id}>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">

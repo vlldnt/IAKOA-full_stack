@@ -14,7 +14,7 @@ export default function CreateEventPage() {
   return (
     <>
       {/* ── Layout principal ──────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden w-full">
+      <div id="create-event-page" className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden w-full">
 
         {/* ── Colonne gauche : formulaire (scrollable) ─────────────────────── */}
         <div className="flex-1 lg:overflow-y-auto">

@@ -54,7 +54,7 @@ export function CategoryGroupButton({
   };
 
   return (
-    <div className="relative">
+    <div id={`category-group-${group.id}`} className="relative">
       <button
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}

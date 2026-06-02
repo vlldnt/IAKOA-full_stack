@@ -25,17 +25,29 @@ const initialState: AuthState = {
   isLoading: true,
 };
 
+// Drapeau non-sensible indiquant qu'une session a déjà existé. Évite d'appeler
+// /users/me + /auth/refresh (et leurs 401 dans les logs) pour un visiteur jamais
+// connecté. Ce n'est pas une preuve d'authentification : seuls les cookies HttpOnly font foi.
+const SESSION_HINT_KEY = 'iakoa-has-session';
+const hasSessionHint = (): boolean => localStorage.getItem(SESSION_HINT_KEY) === '1';
+const setSessionHint = (active: boolean): void => {
+  if (active) localStorage.setItem(SESSION_HINT_KEY, '1');
+  else localStorage.removeItem(SESSION_HINT_KEY);
+};
+
 // ── Thunks asynchrones ───────────────────────────────────────────────────────
 
-// Charge l'utilisateur courant au démarrage à partir du cookie de session.
-// Le rafraîchissement automatique du token (sur 401) est géré par le client API.
+// Charge l'utilisateur courant au démarrage (seulement si une session a déjà existé).
 export const refreshUser = createAsyncThunk<UserType | null>(
   'auth/refreshUser',
   async () => {
+    // Aucune session connue : on n'interroge pas l'API (pas de 401 inutile).
+    if (!hasSessionHint()) return null;
     try {
       return await authService.getUserAPI();
     } catch {
-      // Non authentifié ou session expirée : aucun utilisateur courant.
+      // Session expirée/invalide : on oublie le drapeau.
+      setSessionHint(false);
       return null;
     }
   }
@@ -47,6 +59,7 @@ export const login = createAsyncThunk<AuthResult, { email: string; password: str
   async ({ email, password }) => {
     try {
       const data = await authService.loginAPI(email, password);
+      setSessionHint(true);
       return {
         success: true,
         message: `${data.user.name} bien connecté.`,
@@ -71,6 +84,7 @@ export const register = createAsyncThunk<AuthResult, { name: string; email: stri
 
     try {
       const data = await authService.registerAPI(name, email, password);
+      setSessionHint(true);
       return {
         success: true,
         message: `${data.user.name}, votre compte a été créé avec succès.`,
@@ -88,6 +102,7 @@ export const register = createAsyncThunk<AuthResult, { name: string; email: stri
 export const logout = createAsyncThunk<void>(
   'auth/logout',
   async () => {
+    setSessionHint(false);
     try {
       await authService.logoutAPI();
     } catch {

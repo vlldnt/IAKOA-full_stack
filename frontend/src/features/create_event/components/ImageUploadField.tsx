@@ -62,7 +62,7 @@ export function ImageUploadField({
   };
 
   return (
-    <div className="space-y-2">
+    <div id="image-upload-field" className="space-y-2">
       <input
         ref={inputRef}
         type="file"

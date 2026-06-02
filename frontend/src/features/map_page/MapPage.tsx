@@ -227,6 +227,7 @@ export default function MapPage() {
 
       {/* Conteneur de carte fixe — tient compte du header et de la nav mobile */}
       <div
+        id="map-page"
         className="fixed left-0 right-0 bottom-16 xl:bottom-0"
         style={{ top: headerHeight }}
       >

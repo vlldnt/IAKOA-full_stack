@@ -45,7 +45,7 @@ export function EditProfileSection({ user, onUpdated }: EditProfileSectionProps)
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div id="edit-profile-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base font-semibold text-gray-900">Informations personnelles</h2>
         {!editing && (

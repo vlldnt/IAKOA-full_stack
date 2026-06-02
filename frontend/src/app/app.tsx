@@ -25,18 +25,27 @@ export function Layout() {
     }
   }, [user?.id, dispatch]);
 
+  // Suit la hauteur réelle du header en continu (ResizeObserver) pour que le
+  // contenu se décale exactement, y compris quand le header change de taille :
+  // chargement de la police du logo, apparition/disparition de boutons, resize.
   useEffect(() => {
+    const headerEl = headerRef.current;
+    if (!headerEl) return;
+
     const updateHeaderHeight = () => {
-      if (headerRef.current && window.innerWidth >= 768) {
-        setHeaderHeight(headerRef.current.offsetHeight);
-      } else {
-        setHeaderHeight(0);
-      }
+      // En mobile (< 768px) le header laisse la place à la barre du bas : pas de décalage haut.
+      setHeaderHeight(window.innerWidth >= 768 ? headerEl.offsetHeight : 0);
     };
 
     updateHeaderHeight();
+    const observer = new ResizeObserver(updateHeaderHeight);
+    observer.observe(headerEl);
     window.addEventListener('resize', updateHeaderHeight);
-    return () => window.removeEventListener('resize', updateHeaderHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
   }, []);
 
   return (

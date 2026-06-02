@@ -145,7 +145,7 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
   }, [currentPage]);
 
   return (
-    <div className="w-full min-h-screen bg-white pt-30 md:pt-4 pb-8 md:pb-8 relative">
+    <div id="events-page" className="w-full min-h-screen bg-white pt-30 md:pt-4 pb-8 md:pb-8 relative">
       {selectedEvent && (
         <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}

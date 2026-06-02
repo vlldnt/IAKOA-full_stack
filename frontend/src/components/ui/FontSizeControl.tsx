@@ -5,12 +5,12 @@ const FONT_SIZE_KEY = 'iakoa-font-size';
 // Bornes (en pixels) de la taille de police de base.
 const MIN_SIZE = 12;
 const MAX_SIZE = 20;
-// Pas entre deux crans (12, 14, 16, 18, 20).
+// Pas entre deux tailles (12, 14, 16, 18, 20).
 const STEP = 2;
 // Taille par défaut (équivalente au réglage navigateur usuel).
 const DEFAULT_SIZE = 16;
 
-// Lit la taille enregistrée, alignée sur un cran et bornée entre MIN et MAX.
+// Lit la taille enregistrée, alignée sur un pas et bornée entre MIN et MAX.
 function readStoredFontSize(): number {
   const raw = Number(localStorage.getItem(FONT_SIZE_KEY));
   if (!Number.isFinite(raw) || raw === 0) return DEFAULT_SIZE;
@@ -18,7 +18,7 @@ function readStoredFontSize(): number {
   return Math.min(MAX_SIZE, Math.max(MIN_SIZE, snapped));
 }
 
-// Curseur d'accessibilité (12→20px) fixé en bas à gauche, au-dessus de tout.
+// Sélecteur d'accessibilité [A−] Taille du texte [A+], fixé en bas à gauche.
 // Dimensions en px fixes : le sélecteur ne change pas de taille quand on règle
 // la police globale.
 export function FontSizeControl() {
@@ -30,36 +30,43 @@ export function FontSizeControl() {
     localStorage.setItem(FONT_SIZE_KEY, String(size));
   }, [size]);
 
+  // Diminue la taille d'un pas (sans descendre sous le minimum).
+  const decrease = () => setSize((current) => Math.max(MIN_SIZE, current - STEP));
+  // Augmente la taille d'un pas (sans dépasser le maximum).
+  const increase = () => setSize((current) => Math.min(MAX_SIZE, current + STEP));
+
+  const buttonClass =
+    'flex h-[26px] w-[26px] items-center justify-center rounded-full text-gray-600 ' +
+    'hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 transition-colors';
+
   return (
     <div
-      className="fixed bottom-[16px] left-[16px] z-[10000] flex items-center gap-[6px] rounded-full bg-white/80 px-[10px] py-[5px] shadow-sm ring-1 ring-gray-200/70 backdrop-blur"
-      title={`Taille du texte : ${size}px`}
+      id="font-size-control"
+      className="fixed bottom-[16px] left-[16px] z-[10000] flex h-[36px] items-center gap-[8px] rounded-full bg-white/80 px-[10px] shadow-sm ring-1 ring-gray-200/70 backdrop-blur"
     >
-      {/* Aperçu de la taille minimale (taille fixe). */}
-      <span aria-hidden="true" className="text-[11px] leading-none text-gray-400">
-        A
+      <button
+        type="button"
+        onClick={decrease}
+        disabled={size <= MIN_SIZE}
+        aria-label="Diminuer la taille du texte"
+        className={buttonClass}
+      >
+        <span className="text-[12px] leading-none">A−</span>
+      </button>
+
+      <span className="w-[84px] text-center text-[11px] leading-none text-gray-500 whitespace-nowrap select-none">
+        Taille du texte
       </span>
-      <input
-        type="range"
-        min={MIN_SIZE}
-        max={MAX_SIZE}
-        step={STEP}
-        value={size}
-        list="iakoa-font-steps"
-        onChange={(event) => setSize(Number(event.target.value))}
-        aria-label={`Taille du texte : ${size} pixels`}
-        className="w-[80px] cursor-pointer accent-iakoa-blue"
-      />
-      {/* Crans à 12, 14, 16, 18, 20. */}
-      <datalist id="iakoa-font-steps">
-        {Array.from({ length: (MAX_SIZE - MIN_SIZE) / STEP + 1 }, (_, i) => (
-          <option key={MIN_SIZE + i * STEP} value={MIN_SIZE + i * STEP} />
-        ))}
-      </datalist>
-      {/* Aperçu de la taille maximale (taille fixe). */}
-      <span aria-hidden="true" className="text-[17px] leading-none text-gray-500">
-        A
-      </span>
+
+      <button
+        type="button"
+        onClick={increase}
+        disabled={size >= MAX_SIZE}
+        aria-label="Augmenter la taille du texte"
+        className={buttonClass}
+      >
+        <span className="text-[16px] leading-none">A+</span>
+      </button>
     </div>
   );
 }

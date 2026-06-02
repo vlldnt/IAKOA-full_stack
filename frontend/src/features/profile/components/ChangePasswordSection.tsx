@@ -37,7 +37,7 @@ export function ChangePasswordSection({ userId }: ChangePasswordSectionProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div id="change-password-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center gap-2 mb-5">
         <Lock size={16} className="text-gray-400" />
         <h2 className="text-base font-semibold text-gray-900">Changer le mot de passe</h2>

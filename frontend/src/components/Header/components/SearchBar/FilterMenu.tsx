@@ -342,6 +342,7 @@ export function FilterMenu({
 
       {/* Menu de filtres avec animation */}
       <div
+        id="filter-menu"
         className="fixed top-0 left-0 right-0 bg-white shadow-2xl z-50 flex flex-col transition-all duration-300 ease-out"
         style={{
           transform: isOpen ? 'translateY(0)' : 'translateY(-100%)',

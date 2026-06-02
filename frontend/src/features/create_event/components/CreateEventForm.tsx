@@ -101,6 +101,7 @@ export function CreateEventForm({
 
   return (
     <form
+      id="create-event-form"
       onSubmit={(e) => { e.preventDefault(); onRequestPreview(); }}
       className="space-y-8"
       noValidate

@@ -119,7 +119,7 @@ export function MyEventsSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div id="my-events-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       {selectedEvent && (
         <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}

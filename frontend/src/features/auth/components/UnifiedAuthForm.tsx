@@ -93,7 +93,7 @@ function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
   );
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 w-full">
+    <form id="unified-auth-form" onSubmit={handleSubmit} className="flex flex-col gap-2 w-full">
       {/* Nom (seulement pour inscription) */}
       <div
         className="overflow-hidden transition-all duration-500 ease-in-out"

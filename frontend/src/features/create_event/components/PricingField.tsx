@@ -16,7 +16,7 @@ export function PricingField({
   error,
 }: PricingFieldProps) {
   return (
-    <div className="space-y-2">
+    <div id="pricing-field" className="space-y-2">
       {/* Toggle Gratuit */}
       <label className="flex items-center gap-3 cursor-pointer w-fit">
         <div

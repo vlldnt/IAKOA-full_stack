@@ -27,7 +27,7 @@ export function AddressAutocomplete({
       : 'border-gray-200 focus-within:border-iakoa-blue';
 
   return (
-    <div className="relative">
+    <div id="address-autocomplete" className="relative">
       <div className={`flex items-center gap-2 px-3 py-3 rounded-lg border bg-gray-50 transition-colors ${borderColor}`}>
         <MapPin size={18} className="text-gray-400 shrink-0" />
         <input

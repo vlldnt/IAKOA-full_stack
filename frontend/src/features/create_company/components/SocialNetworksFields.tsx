@@ -58,7 +58,7 @@ interface SocialNetworksFieldsProps {
 
 export function SocialNetworksFields({ values, onChange, errors }: SocialNetworksFieldsProps) {
   return (
-    <div className="space-y-3">
+    <div id="social-networks-fields" className="space-y-3">
       {SOCIAL_FIELDS.map(({ key, placeholder, Icon, color }) => (
         <div key={key}>
           <div className={`flex items-center gap-2 px-3 py-3 rounded-lg border bg-gray-50 transition-colors

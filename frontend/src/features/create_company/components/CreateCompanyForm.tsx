@@ -48,6 +48,7 @@ export function CreateCompanyForm({
 
   return (
     <form
+      id="create-company-form"
       onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
       className="space-y-8"
       noValidate

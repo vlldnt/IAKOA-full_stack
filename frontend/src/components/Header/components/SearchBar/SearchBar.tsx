@@ -167,7 +167,7 @@ export function SearchBars() {
   };
 
   return (
-    <div className="w-full relative">
+    <div id="search-bar" className="w-full relative">
       {/* Erreur géolocalisation */}
       {geoError && (
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-4 py-1.5 rounded-full shadow whitespace-nowrap">

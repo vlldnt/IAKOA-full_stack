@@ -1,13 +1,13 @@
 import { forwardRef, useState } from "react";
 import iakoaLogo from "@/assets/logo-iakoa.svg";
+import iakoaIconUrl from "@/assets/iakoaIcon.svg";
 import { Link } from "react-router-dom";
 import MenuLink from "./components/MenuLink";
-import { IakoaIcon } from "./components/IakoaIcon";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
 import { resetFilters } from "@/store/slices/filtersSlice";
 import { SearchBars } from "./components/SearchBar/SearchBar";
-import { LogIn, MapPin, X, Heart, Plus } from "lucide-react";
+import { LogIn, MapPin, X, Heart, Plus, CalendarDays } from "lucide-react";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
 import login_img from '@/assets/images/login.webp';
@@ -40,14 +40,27 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
     <>
       {/* Header responsive */}
       <header
+        id="main-header"
         ref={ref}
-        className="fixed w-full top-0 p-3 sm:p-4 lg:p-6 shadow-md z-50 bg-white"
+        className="fixed w-full top-0 px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-2 shadow-md z-50 bg-white"
       >
-        <div className="h-full max-w-full lg:max-w-[95%] mx-auto flex flex-col lg:flex-row gap-3 lg:gap-4 justify-center lg:justify-between items-center">
+        <div className="h-full max-w-full lg:max-w-[95%] mx-auto flex flex-col lg:flex-row gap-3 lg:gap-4 justify-center lg:justify-between items-center md:px-10">
           {/* Colonne gauche - Logo (30%) + bouton X clear filters en mobile */}
-          <div className="flex lg:w-[30%] items-center justify-center w-full">
-            <Link to="/">
-              <img src={iakoaLogo} alt="Logo IAKOA" className="w-30 lg:w-55" />
+          <div className="flex lg:w-[30%] items-center justify-center md:justify-start w-full">
+            <Link to="/" aria-label="IAKOA - Accueil" className="flex items-center gap-2">
+              <img
+                src={iakoaIconUrl}
+                alt=""
+                aria-hidden="true"
+                className="h-11 w-11 lg:h-16 lg:w-16"
+              />
+              <span
+                id="logo-iakoa"
+                className="text-iakoa-blue text-3xl lg:text-5xl leading-none select-none"
+                style={{ fontFamily: "'Permanent Marker', cursive", fontWeight: 500 }}
+              >
+                IAKOA
+              </span>
             </Link>
             {/* Bouton X clear filters - mobile/tablette uniquement */}
             {hasActiveFilters && (
@@ -69,7 +82,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
           {/* Colonne droite - Menu classique (30%) */}
           <div className="hidden lg:flex lg:w-[30%] items-center justify-end gap-2 lg:gap-7">
             <ul className="flex gap-2 rounded-lg">
-              <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
+              <MenuLink page="Évènements" link="/" icon={CalendarDays} />
               <MenuLink page="Carte" link="/map" icon={MapPin} />
               {user && <MenuLink page="Favoris" link="/favorites" icon={Heart} />}
               {user && <MenuLink page="Créer" link="/create" icon={Plus} />}
@@ -92,7 +105,7 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
       {/* Menu mobile/tablette - Barre avec icônes + dropdown profil */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-50">
         <ul className="flex justify-center items-center gap-4 py-3 px-4">
-          <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
+          <MenuLink page="Évènements" link="/" icon={CalendarDays} />
           <MenuLink page="Carte" link="/map" icon={MapPin} />
           {user && <MenuLink page="Favoris" link="/favorites" icon={Heart} />}
           {user && <MenuLink page="Créer" link="/create" icon={Plus} />}

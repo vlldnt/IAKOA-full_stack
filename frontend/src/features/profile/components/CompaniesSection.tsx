@@ -123,7 +123,7 @@ export function CompaniesSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div id="companies-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <Building2 size={16} className="text-gray-400" />

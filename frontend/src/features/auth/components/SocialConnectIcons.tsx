@@ -19,7 +19,7 @@ function SocialConnectIcons({ label = 'Se connecter avec :' }: SocialConnectIcon
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div id="social-connect-icons" className="flex flex-col items-center gap-3">
       <p className="text-gray-500 text-sm">{label}</p>
       <div className="flex justify-center items-center gap-4">
         <SocialButton

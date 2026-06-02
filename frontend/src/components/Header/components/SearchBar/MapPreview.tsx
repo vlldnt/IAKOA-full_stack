@@ -60,7 +60,7 @@ export function MapPreview({ radius, userPosition }: MapPreviewProps) {
   }
 
   return (
-    <div className="w-90 h-90 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto relative">
+    <div id="map-preview" className="w-90 h-90 rounded-lg overflow-hidden shadow-md border border-gray-200 mx-auto relative">
       <MapContainer
         ref={mapRef}
         center={position}

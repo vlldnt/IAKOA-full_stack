@@ -32,7 +32,11 @@ function ProfileDropdown({ user, onLogout, isMobile = false }: ProfileDropdownPr
     .slice(0, 2);
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div
+      id={isMobile ? 'profile-dropdown-mobile' : 'profile-dropdown'}
+      ref={dropdownRef}
+      className="relative"
+    >
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}

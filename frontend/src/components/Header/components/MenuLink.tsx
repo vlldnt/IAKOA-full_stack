@@ -26,7 +26,7 @@ function MenuLink({ page, link, onClick, variant = 'default', icon: Icon }: Menu
   );
 
   return (
-    <li>
+    <li id={`menu-link-${page.toLowerCase().replace(/['\s]+/g, '-')}`}>
       {/* Si onClick fourni, afficher un bouton, sinon un Link */}
       {onClick ? (
         <button onClick={onClick} className={`text-iakoa-blue ${baseClass} ${variantClass}`}>
