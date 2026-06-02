@@ -346,8 +346,9 @@ export function FilterMenu({
         style={{
           transform: isOpen ? 'translateY(0)' : 'translateY(-100%)',
           opacity: isOpen ? 1 : 0,
-          height: isOpen ? '85vh' : '0',
-          overflow: 'hidden',
+          // Hauteur = celle du contenu, plafonnée à 85vh (scroll si dépassement).
+          maxHeight: isOpen ? '85vh' : '0',
+          overflowY: 'auto',
         }}
       >
         {/* Header avec Logo et SearchBar */}
@@ -452,9 +453,9 @@ export function FilterMenu({
         </div>
 
         {/* Contenu des filtres - 3 colonnes */}
-        <div className="flex-1 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 h-full">
-          <div className="flex flex-col lg:flex-row gap-4 h-full">
+        <div className="overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             {/* Colonne 1: Carte avec Rayon */}
             <div className="shrink-0 w-full lg:w-90 overflow-y-auto py-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
