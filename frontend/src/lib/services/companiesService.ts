@@ -1,6 +1,6 @@
 import { api } from './apiClient';
 
-/** Représentation d'une entreprise côté front. */
+// Représentation d'une entreprise côté front.
 export interface CompanyType {
   id: string;
   name: string;
@@ -11,7 +11,7 @@ export interface CompanyType {
   ownerId: string;
 }
 
-/** Réseaux sociaux optionnels associés à une entreprise. */
+// Réseaux sociaux optionnels associés à une entreprise.
 export interface SocialNetworks {
   facebook?: string;
   instagram?: string;
@@ -20,7 +20,7 @@ export interface SocialNetworks {
   tiktok?: string;
 }
 
-/** Données nécessaires à la création d'une entreprise. */
+// Données nécessaires à la création d'une entreprise.
 export interface CreateCompanyPayload {
   name: string;
   siren: string;
@@ -29,14 +29,7 @@ export interface CreateCompanyPayload {
   socialNetworks?: SocialNetworks;
 }
 
-/**
- * Supprime les réseaux sociaux vides d'un payload entreprise.
- *
- * Paramètres : `socialNetworks` — réseaux sociaux saisis (potentiellement vides).
- * Retour : un objet ne contenant que les réseaux renseignés, ou `undefined`.
- * Pourquoi : éviter d'envoyer des champs vides au backend et factoriser le
- * nettoyage utilisé à la création et à la mise à jour.
- */
+// Retire les réseaux sociaux vides du payload (ne garde que les renseignés).
 function cleanSocialNetworks(socialNetworks?: SocialNetworks): SocialNetworks | undefined {
   if (!socialNetworks) return undefined;
   const filled = Object.fromEntries(
@@ -45,23 +38,12 @@ function cleanSocialNetworks(socialNetworks?: SocialNetworks): SocialNetworks | 
   return Object.keys(filled).length > 0 ? filled : undefined;
 }
 
-/**
- * Récupère les entreprises de l'utilisateur connecté.
- *
- * Retour : la liste des entreprises possédées par l'utilisateur.
- * Cas d'utilisation : section « Mes entreprises » du profil.
- */
+// Récupère les entreprises de l'utilisateur connecté.
 export function fetchMyCompanies(): Promise<CompanyType[]> {
   return api.get<CompanyType[]>('/companies/my-companies');
 }
 
-/**
- * Crée une nouvelle entreprise (nécessite le statut créateur).
- *
- * Paramètres : `payload` — données de l'entreprise.
- * Retour : l'entreprise créée.
- * Cas d'utilisation : formulaire de création d'entreprise.
- */
+// Crée une nouvelle entreprise (nécessite le statut créateur).
 export function createCompany(payload: CreateCompanyPayload): Promise<CompanyType> {
   return api.post<CompanyType>('/companies', {
     ...payload,
@@ -69,13 +51,7 @@ export function createCompany(payload: CreateCompanyPayload): Promise<CompanyTyp
   });
 }
 
-/**
- * Met à jour une entreprise (propriétaire uniquement).
- *
- * Paramètres : `id` — identifiant ; `payload` — champs à modifier.
- * Retour : l'entreprise mise à jour.
- * Cas d'utilisation : édition d'une entreprise existante.
- */
+// Met à jour une entreprise (propriétaire uniquement).
 export function updateCompany(
   id: string,
   payload: Partial<CreateCompanyPayload>,
@@ -86,12 +62,7 @@ export function updateCompany(
   });
 }
 
-/**
- * Supprime une entreprise (propriétaire uniquement).
- *
- * Paramètres : `id` — identifiant de l'entreprise.
- * Cas d'utilisation : suppression d'une entreprise par son propriétaire.
- */
+// Supprime une entreprise (propriétaire uniquement).
 export function deleteCompany(id: string): Promise<void> {
   return api.delete<void>(`/companies/${id}`);
 }

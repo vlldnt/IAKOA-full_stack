@@ -1,13 +1,7 @@
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-/**
- * Upload une image vers Cloudinary (unsigned upload preset requis).
- * Retourne l'URL publique sécurisée du fichier uploadé.
- * Variables d'env requises :
- *   VITE_CLOUDINARY_CLOUD_NAME=moncloud
- *   VITE_CLOUDINARY_UPLOAD_PRESET=mon_preset
- */
+// Upload une image vers Cloudinary (preset non signé) et renvoie son URL sécurisée.
 export async function uploadImage(file: File): Promise<string> {
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
     throw new Error(

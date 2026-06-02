@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from '@/components/Header/Header';
+import { FontSizeControl } from '@/components/ui/FontSizeControl';
 import { AppRouter } from './router';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { refreshUser } from '@/store/slices/authSlice';
@@ -47,6 +48,8 @@ export function Layout() {
       >
         <Outlet />
       </main>
+      {/* Curseur d'accessibilité (taille du texte), fixé en bas à gauche. */}
+      <FontSizeControl />
     </>
   );
 }

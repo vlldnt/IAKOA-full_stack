@@ -183,17 +183,17 @@ for (const [id, entry] of Object.entries(SYNONYMS)) {
   CATEGORY_LOOKUP[id] = entry;
 }
 
-/** Récupère le label français d'une catégorie */
+// Récupère le label français d'une catégorie.
 export function getCategoryLabel(category: string): string {
   return CATEGORY_LOOKUP[category]?.label ?? category;
 }
 
-/** Récupère la couleur hex d'une catégorie */
+// Récupère la couleur hex d'une catégorie.
 export function getCategoryHexColor(category: string): string {
   return CATEGORY_LOOKUP[category]?.hexColor ?? '#3B82F6';
 }
 
-/** Dérive une couleur d'ombre (20 % d'opacité) */
+// Dérive une couleur d'ombre (20 % d'opacité).
 export function getCategoryShadowColor(category: string): string {
   return `${getCategoryHexColor(category)}33`;
 }

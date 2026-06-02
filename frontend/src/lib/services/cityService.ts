@@ -1,13 +1,7 @@
-/**
- * Service de recherche de communes françaises.
- *
- * Utilise l'API publique geo.api.gouv.fr (Découpage administratif).
- * Contrairement au géocodage d'adresses, cette API ne renvoie que des communes
- * (nom, code postal, centre géographique), ce qui convient à l'autocomplétion
- * de ville dans la barre de recherche et le menu de filtres.
- */
+// Service de recherche de communes françaises via l'API publique geo.api.gouv.fr
+// (autocomplétion de ville dans la barre de recherche et le menu de filtres).
 
-/** Résultat de recherche d'une commune. */
+// Résultat de recherche d'une commune.
 export interface ICityResult {
   name: string;
   region: string;
@@ -16,7 +10,7 @@ export interface ICityResult {
   postcode?: string;
 }
 
-/** Forme brute d'une commune renvoyée par l'API geo.api.gouv.fr. */
+// Forme brute d'une commune renvoyée par l'API geo.api.gouv.fr.
 interface IGeoApiCommune {
   nom: string;
   codesPostaux?: string[];
@@ -24,19 +18,10 @@ interface IGeoApiCommune {
   departement?: { nom?: string };
 }
 
-/** Nombre minimal de caractères avant de déclencher une recherche. */
+// Nombre minimal de caractères avant de déclencher une recherche.
 const MIN_QUERY_LENGTH = 2;
 
-/**
- * Recherche des communes françaises par nom.
- *
- * Paramètres : `query` — texte saisi par l'utilisateur.
- * Retour : jusqu'à 5 communes correspondantes (vide si requête trop courte ou
- * en cas d'erreur réseau).
- * Cas d'utilisation : autocomplétion de ville dans `SearchBar` et `FilterMenu`.
- * Pourquoi : centraliser l'appel à l'API externe pour supprimer la duplication
- * et sortir la logique réseau des composants.
- */
+// Recherche des communes françaises par nom (jusqu'à 5 résultats, vide si erreur).
 export async function searchCities(query: string): Promise<ICityResult[]> {
   if (query.trim().length < MIN_QUERY_LENGTH) return [];
 

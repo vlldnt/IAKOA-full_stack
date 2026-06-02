@@ -1,21 +1,9 @@
-/**
- * URL de base de l'API, configurable via la variable d'environnement Vite.
- * Valeur de repli sur l'instance locale de développement.
- */
+// URL de base de l'API (variable Vite, repli sur l'instance locale).
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-/**
- * Erreur applicative normalisée renvoyée par le client API.
- *
- * Description : encapsule le code HTTP et le message métier renvoyé par le
- * backend afin que toute la couche appel API expose un format d'erreur unique.
- * Pourquoi : éviter que chaque service ré-invente son propre parsing d'erreur
- * et permettre aux composants/hooks de réagir au `status` (401, 403, 409...).
- */
+// Erreur API normalisée : encapsule le code HTTP et le message métier du backend.
 export class ApiError extends Error {
-  /** Code HTTP de la réponse en échec. */
   readonly status: number;
-  /** Corps d'erreur brut renvoyé par le backend, si disponible. */
   readonly data: unknown;
 
   constructor(status: number, message: string, data?: unknown) {
@@ -26,40 +14,17 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Options d'une requête API, surensemble restreint de `RequestInit`.
- */
+// Options d'une requête API (surensemble restreint de RequestInit).
 export interface IRequestOptions extends Omit<RequestInit, 'body'> {
-  /** Corps de requête : objet (sérialisé en JSON) ou `FormData` (multipart). */
   body?: unknown;
-  /**
-   * Marque la requête comme publique. Conservé pour la lisibilité des services ;
-   * sans effet sur l'envoi des cookies (toujours `credentials: 'include'`).
-   */
   skipAuth?: boolean;
-  /** Désactive la tentative de rafraîchissement automatique sur 401. */
   skipRefresh?: boolean;
 }
 
-/**
- * Promesse de rafraîchissement en cours (single-flight).
- *
- * Pourquoi : si plusieurs requêtes échouent simultanément en 401, on ne déclenche
- * qu'un seul appel `/auth/refresh` et toutes les requêtes attendent son résultat.
- */
+// Verrou single-flight : un seul appel /auth/refresh concurrent.
 let refreshPromise: Promise<boolean> | null = null;
 
-/**
- * Tente de renouveler la session via le cookie de refresh token.
- *
- * Paramètres : aucun (le refresh token est porté par un cookie HttpOnly).
- * Retour : `true` si la session a été renouvelée, `false` sinon.
- * Cas d'utilisation : appelé automatiquement par `request` lorsqu'une réponse
- * authentifiée renvoie 401.
- * Pourquoi : centraliser la logique de refresh et garantir un seul appel
- * concurrent grâce au verrou `refreshPromise`. Les nouveaux tokens sont déposés
- * par le serveur dans des cookies HttpOnly, jamais manipulés en JavaScript.
- */
+// Renouvelle la session via le cookie de refresh token (true si réussi).
 async function refreshTokens(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
@@ -81,16 +46,7 @@ async function refreshTokens(): Promise<boolean> {
   return refreshPromise;
 }
 
-/**
- * Construit les en-têtes HTTP d'une requête.
- *
- * Paramètres :
- * - `options` : options de la requête courante.
- * Retour : objet `Headers` prêt à l'emploi.
- * Pourquoi : factoriser la gestion du `Content-Type` (absent pour `FormData`,
- * géré automatiquement par le navigateur). L'authentification repose désormais
- * sur les cookies HttpOnly, plus aucun token n'est ajouté en en-tête.
- */
+// Construit les en-têtes HTTP (Content-Type JSON + en-tête anti-CSRF).
 function buildHeaders(options: IRequestOptions): Headers {
   const headers = new Headers(options.headers);
 
@@ -99,51 +55,20 @@ function buildHeaders(options: IRequestOptions): Headers {
     headers.set('Content-Type', 'application/json');
   }
 
-  // En-tête anti-CSRF : un site tiers ne peut pas le poser sur une requête
-  // « simple », et une requête cross-origin avec en-tête est bloquée par le CORS.
+  // En-tête anti-CSRF : un site tiers ne peut pas le poser sur une requête simple.
   headers.set('X-Requested-With', 'XMLHttpRequest');
 
   return headers;
 }
 
-/**
- * Sérialise le corps de requête selon son type.
- *
- * Paramètres :
- * - `body` : corps fourni par l'appelant (objet, `FormData` ou indéfini).
- * Retour : `BodyInit` accepté par `fetch`, ou `undefined`.
- * Pourquoi : éviter de sérialiser un `FormData` (upload de fichiers) tout en
- * convertissant automatiquement les objets en JSON.
- */
+// Sérialise le corps : JSON pour un objet, brut pour un FormData.
 function serializeBody(body: unknown): BodyInit | undefined {
   if (body === undefined || body === null) return undefined;
   if (body instanceof FormData) return body;
   return JSON.stringify(body);
 }
 
-/**
- * Exécute une requête HTTP centralisée vers l'API.
- *
- * Description : point d'entrée unique de tous les appels réseau du frontend.
- * Gère l'URL de base, l'authentification, la sérialisation JSON, le parsing de
- * la réponse, le rafraîchissement automatique du token sur 401 (avec rejeu) et
- * la normalisation des erreurs via `ApiError`.
- *
- * Paramètres :
- * - `path` : chemin relatif de la ressource (ex. `/events?page=1`).
- * - `options` : méthode, corps, en-têtes et options d'authentification.
- *
- * Retour : la réponse JSON typée `T` (ou `undefined` typé pour un corps vide,
- * ex. réponses 204).
- *
- * Cas d'utilisation : utilisé par tous les services métier (events, companies,
- * favorites, account...) à la place d'appels `fetch` dispersés.
- *
- * Pourquoi : supprimer la duplication (token, headers, gestion d'erreur) et
- * fournir un comportement réseau cohérent et sécurisé dans toute l'application.
- *
- * @throws {ApiError} si la réponse HTTP est en échec.
- */
+// Requête HTTP centralisée : cookies, JSON, refresh auto sur 401, erreurs ApiError.
 export async function request<T>(path: string, options: IRequestOptions = {}): Promise<T> {
   const { body, skipAuth, skipRefresh, ...init } = options;
 
@@ -177,17 +102,14 @@ export async function request<T>(path: string, options: IRequestOptions = {}): P
     throw new ApiError(response.status, message, errorData);
   }
 
-  // Réponses sans corps (204 No Content) : on renvoie `undefined`.
+  // Réponses sans corps (204 No Content) : on renvoie undefined.
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-/**
- * Raccourcis HTTP au-dessus de `request`, pour une lecture plus concise dans
- * les services (`api.get`, `api.post`, ...).
- */
+// Raccourcis HTTP au-dessus de request (api.get, api.post, ...).
 export const api = {
   get: <T>(path: string, options?: IRequestOptions) =>
     request<T>(path, { ...options, method: 'GET' }),
