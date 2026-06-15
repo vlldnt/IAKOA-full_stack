@@ -2,7 +2,7 @@ import type { EventType } from "@/lib/types/EventType";
 import * as tokenService from "./tokenService";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+  import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 // Interface pour la réponse paginée
 export interface PaginatedEventsResponse {
