@@ -27,7 +27,7 @@ export class UsersService {
     }
 
     // Hasher le mot de passe
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
 
     // Créer l'utilisateur
     try {
@@ -75,7 +75,11 @@ export class UsersService {
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto, userRole?: Role): Promise<UserResponseDto> {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    userRole?: Role,
+  ): Promise<UserResponseDto> {
     // Vérifier si l'utilisateur existe
     const existingUser = await this.prisma.user.findUnique({
       where: { id },
@@ -105,7 +109,7 @@ export class UsersService {
 
     // Hasher le nouveau mot de passe si fourni
     if (updateUserDto.password) {
-      data.password = await bcrypt.hash(updateUserDto.password, 10);
+      data.password = await bcrypt.hash(updateUserDto.password, 12);
     }
 
     // Mettre à jour l'utilisateur
@@ -159,7 +163,9 @@ export class UsersService {
 
     // Vérifier si l'utilisateur a un mot de passe (non OAuth)
     if (!user.password) {
-      throw new UnauthorizedException('Cet utilisateur utilise une authentification OAuth (Google/Facebook). Veuillez vous connecter avec le même fournisseur.');
+      throw new UnauthorizedException(
+        'Cet utilisateur utilise une authentification OAuth (Google/Facebook). Veuillez vous connecter avec le même fournisseur.',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(loginUserDto.password, user.password);
@@ -172,7 +178,7 @@ export class UsersService {
   }
 
   private toResponseDto(user: User): UserResponseDto {
-    const { password, refreshToken, ...result } = user;
+    const { password, ...result } = user;
     return result;
   }
 }

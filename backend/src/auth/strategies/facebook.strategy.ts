@@ -9,7 +9,8 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     super({
       clientID: process.env.FACEBOOK_APP_ID || '',
       clientSecret: process.env.FACEBOOK_APP_SECRET || '',
-      callbackURL: process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:3000/auth/facebook/callback',
+      callbackURL:
+        process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:3000/auth/facebook/callback',
       scope: ['email', 'public_profile'],
       profileFields: ['id', 'emails', 'name', 'photos'],
     });
@@ -27,7 +28,9 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       provider: 'facebook',
       providerId: id,
       email: emails && emails[0] ? emails[0].value : `facebook_${id}@oauth.local`,
-      name: name ? (name.givenName + (name.familyName ? ' ' + name.familyName : '')) : 'Facebook User',
+      name: name
+        ? name.givenName + (name.familyName ? ' ' + name.familyName : '')
+        : 'Facebook User',
       avatar: photos && photos[0] ? photos[0].value : undefined,
     });
 

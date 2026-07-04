@@ -11,6 +11,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterUserDto } from '../users/dto/register-user.dto';
@@ -21,6 +22,13 @@ import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { FacebookOAuthGuard } from './guards/facebook-oauth.guard';
 import { GetUser } from './decorators/get-user.decorator';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { setAuthCookies, clearAuthCookies } from './cookies';
+
+type AuthenticatedUser = UserResponseDto & { sessionId?: string };
+
+// Limite stricte sur les endpoints sensibles (anti brute-force),
+// en plus de la limite globale définie dans AppModule.
+const STRICT_RATE_LIMIT = { default: { limit: 10, ttl: 60_000 } };
 
 @ApiTags('auth')
 @Controller('auth')
@@ -29,89 +37,84 @@ export class AuthController {
 
   /**
    * POST /auth/register - Inscription d'un nouvel utilisateur
+   *
+   * Les tokens sont posés en cookies HttpOnly (web) ET retournés dans le
+   * corps de la réponse (clients non-navigateur, future app mobile).
    */
   @Post('register')
+  @Throttle(STRICT_RATE_LIMIT)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: "Inscription d'un nouvel utilisateur",
     description:
-      'Crée un nouveau compte utilisateur avec email et mot de passe. Retourne les tokens JWT. Le rôle et le statut de créateur sont définis automatiquement.',
+      'Crée un nouveau compte utilisateur avec email et mot de passe. Pose les tokens en cookies HttpOnly et les retourne dans la réponse.',
   })
   @ApiBody({ type: RegisterUserDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Utilisateur créé avec succès',
-    schema: {
-      type: 'object',
-      properties: {
-        user: { $ref: '#/components/schemas/UserResponseDto' },
-        accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-        refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-      },
-    },
-  })
+  @ApiResponse({ status: 201, description: 'Utilisateur créé avec succès' })
   @ApiResponse({ status: 400, description: 'Données invalides' })
   @ApiResponse({ status: 409, description: 'Email déjà utilisé' })
-  register(@Body(ValidationPipe) registerUserDto: RegisterUserDto) {
-    return this.authService.register(registerUserDto);
+  @ApiResponse({ status: 429, description: 'Trop de tentatives' })
+  async register(
+    @Body(ValidationPipe) registerUserDto: RegisterUserDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(registerUserDto, req.get('user-agent'));
+    setAuthCookies(res, result);
+    return result;
   }
 
   /**
    * POST /auth/login - Connexion utilisateur
    */
   @Post('login')
+  @Throttle(STRICT_RATE_LIMIT)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Connexion utilisateur',
-    description: 'Authentifie un utilisateur avec email et mot de passe. Retourne les tokens JWT.',
+    description:
+      'Authentifie un utilisateur avec email et mot de passe. Pose les tokens en cookies HttpOnly et les retourne dans la réponse.',
   })
   @ApiBody({ type: LoginUserDto })
-  @ApiResponse({
-    status: 200,
-    description: 'Connexion réussie',
-    schema: {
-      type: 'object',
-      properties: {
-        user: { $ref: '#/components/schemas/UserResponseDto' },
-        accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-        refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Connexion réussie' })
   @ApiResponse({ status: 401, description: 'Identifiants invalides' })
-  login(@Body(ValidationPipe) loginUserDto: LoginUserDto) {
-    return this.authService.login(loginUserDto);
+  @ApiResponse({ status: 429, description: 'Trop de tentatives' })
+  async login(
+    @Body(ValidationPipe) loginUserDto: LoginUserDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(loginUserDto, req.get('user-agent'));
+    setAuthCookies(res, result);
+    return result;
   }
 
   /**
-   * POST /auth/refresh - Rafraîchir l'access token
+   * POST /auth/refresh - Rafraîchir l'access token (rotation du refresh token)
    */
   @Post('refresh')
+  @Throttle(STRICT_RATE_LIMIT)
   @UseGuards(JwtRefreshAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: "Rafraîchir l'access token",
-    description: 'Utilise le refresh token pour obtenir un nouvel access token.',
+    description:
+      "Utilise le refresh token (cookie ou header) pour émettre une nouvelle paire de tokens. L'ancien refresh token est invalidé (rotation).",
   })
-  @ApiResponse({
-    status: 200,
-    description: 'Token rafraîchi avec succès',
-    schema: {
-      type: 'object',
-      properties: {
-        accessToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-        refreshToken: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Token rafraîchi avec succès' })
   @ApiResponse({ status: 401, description: 'Refresh token invalide ou expiré' })
-  refreshTokens(@GetUser() user: UserResponseDto) {
-    return this.authService.refreshTokens(user.id);
+  async refreshTokens(
+    @GetUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refreshTokens(user.id, user.sessionId!);
+    setAuthCookies(res, tokens);
+    return tokens;
   }
 
   /**
-   * POST /auth/logout - Déconnexion utilisateur
+   * POST /auth/logout - Déconnexion de la session courante
    */
   @Post('logout')
   @UseGuards(JwtAuthGuard)
@@ -119,12 +122,15 @@ export class AuthController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({
     summary: 'Déconnexion utilisateur',
-    description: "Invalide le refresh token de l'utilisateur.",
+    description:
+      'Révoque la session courante (les autres appareils restent connectés) et supprime les cookies.',
   })
   @ApiResponse({ status: 200, description: 'Déconnexion réussie' })
   @ApiResponse({ status: 401, description: 'Token invalide' })
-  logout(@GetUser() user: UserResponseDto) {
-    return this.authService.logout(user.id);
+  async logout(@GetUser() user: AuthenticatedUser, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.logout(user.sessionId);
+    clearAuthCookies(res);
+    return result;
   }
 
   /**
@@ -133,7 +139,7 @@ export class AuthController {
   @Get('google')
   @UseGuards(GoogleOAuthGuard)
   @ApiOperation({
-    summary: 'Initier l\'authentification Google',
+    summary: "Initier l'authentification Google",
     description: 'Redirige vers la page de connexion Google',
   })
   @ApiResponse({ status: 302, description: 'Redirection vers Google' })
@@ -148,17 +154,14 @@ export class AuthController {
   @UseGuards(GoogleOAuthGuard)
   @ApiOperation({
     summary: 'Callback OAuth Google',
-    description: 'Traite la réponse de Google et connecte l\'utilisateur',
+    description: "Traite la réponse de Google et connecte l'utilisateur",
   })
-  @ApiResponse({ status: 200, description: 'Authentification réussie' })
+  @ApiResponse({
+    status: 302,
+    description: 'Authentification réussie, redirection vers le frontend',
+  })
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.loginOAuth(req.user);
-
-    // Rediriger vers le frontend avec les tokens en query params
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(
-      `${frontendUrl}/auth/callback?access_token=${result.access_token}&refresh_token=${result.refresh_token}`,
-    );
+    return this.completeOAuthLogin(req, res);
   }
 
   /**
@@ -167,7 +170,7 @@ export class AuthController {
   @Get('facebook')
   @UseGuards(FacebookOAuthGuard)
   @ApiOperation({
-    summary: 'Initier l\'authentification Facebook',
+    summary: "Initier l'authentification Facebook",
     description: 'Redirige vers la page de connexion Facebook',
   })
   @ApiResponse({ status: 302, description: 'Redirection vers Facebook' })
@@ -182,16 +185,26 @@ export class AuthController {
   @UseGuards(FacebookOAuthGuard)
   @ApiOperation({
     summary: 'Callback OAuth Facebook',
-    description: 'Traite la réponse de Facebook et connecte l\'utilisateur',
+    description: "Traite la réponse de Facebook et connecte l'utilisateur",
   })
-  @ApiResponse({ status: 200, description: 'Authentification réussie' })
+  @ApiResponse({
+    status: 302,
+    description: 'Authentification réussie, redirection vers le frontend',
+  })
   async facebookAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const result = await this.authService.loginOAuth(req.user);
+    return this.completeOAuthLogin(req, res);
+  }
 
-    // Rediriger vers le frontend avec les tokens en query params
+  /**
+   * Fin du flux OAuth : les tokens sont posés en cookies HttpOnly puis
+   * l'utilisateur est redirigé vers le frontend — jamais de token dans l'URL
+   * (historique navigateur, logs du proxy, header Referer).
+   */
+  private async completeOAuthLogin(req: Request, res: Response) {
+    const result = await this.authService.loginOAuth(req.user, req.get('user-agent'));
+    setAuthCookies(res, result);
+
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(
-      `${frontendUrl}/auth/callback?access_token=${result.access_token}&refresh_token=${result.refresh_token}`,
-    );
+    res.redirect(`${frontendUrl}/auth/callback`);
   }
 }

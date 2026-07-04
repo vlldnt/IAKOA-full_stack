@@ -1,47 +1,33 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import * as tokenService from '@/lib/services/tokenService';
 
-// Page de callback OAuth pour Google et Facebook
-// Récupère les tokens depuis l'URL et connecte l'utilisateur
+// Page de callback OAuth pour Google et Facebook.
+// Les cookies HttpOnly ont déjà été posés par le backend lors de la
+// redirection : il suffit de recharger l'utilisateur pour valider la session.
 export function OAuthCallback() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const handled = useRef(false);
 
   useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+
     const handleOAuthCallback = async () => {
-      // Récupérer les tokens depuis l'URL
-      const accessToken = searchParams.get('access_token');
-      const refreshToken = searchParams.get('refresh_token');
-
-      if (!accessToken || !refreshToken) {
-        setError('Erreur lors de l\'authentification. Tokens manquants.');
-        setTimeout(() => navigate('/'), 3000);
-        return;
-      }
-
       try {
-        // Stocker les tokens
-        tokenService.setTokens(accessToken, refreshToken);
-
-        // Récupérer les informations utilisateur
         await refreshUser();
-
-        // Rediriger vers la page d'accueil
         navigate('/');
       } catch (err) {
-        console.error('Erreur lors de l\'authentification OAuth:', err);
-        setError('Erreur lors de l\'authentification. Veuillez réessayer.');
-        tokenService.clearTokens();
+        console.error("Erreur lors de l'authentification OAuth:", err);
+        setError("Erreur lors de l'authentification. Veuillez réessayer.");
         setTimeout(() => navigate('/'), 3000);
       }
     };
 
     handleOAuthCallback();
-  }, [searchParams, navigate, refreshUser]);
+  }, [navigate, refreshUser]);
 
   if (error) {
     return (

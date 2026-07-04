@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/commo
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import { requireEnv } from '../config/env';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -10,11 +11,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     const pool = new Pool({
-      host: process.env.PGHOST || '127.0.0.1',
-      port: parseInt(process.env.PGPORT || '5432'),
-      user: process.env.PGUSER || 'iakoa_dev',
-      password: process.env.PGPASSWORD || 'Awlmpzw12',
-      database: process.env.PGDATABASE || 'iakoa-backend',
+      connectionString: requireEnv('DATABASE_URL'),
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,

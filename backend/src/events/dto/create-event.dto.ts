@@ -3,19 +3,67 @@ import {
   IsDateString,
   MaxLength,
   IsInt,
+  IsNumber,
   Min,
+  Max,
   IsUUID,
   IsOptional,
   IsUrl,
-  IsObject,
   IsArray,
   ValidateNested,
   IsEnum,
+  IsDefined,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CreateMediaDto } from '../../media/dto/create-media.dto';
 import { EventCategory } from '@prisma/client';
+
+export class CoordinatesDto {
+  @ApiProperty({ description: 'Latitude', example: 48.8566, minimum: -90, maximum: 90 })
+  @IsNumber({}, { message: 'La latitude doit être un nombre.' })
+  @Min(-90, { message: 'La latitude doit être comprise entre -90 et 90.' })
+  @Max(90, { message: 'La latitude doit être comprise entre -90 et 90.' })
+  lat: number;
+
+  @ApiProperty({ description: 'Longitude', example: 2.3522, minimum: -180, maximum: 180 })
+  @IsNumber({}, { message: 'La longitude doit être un nombre.' })
+  @Min(-180, { message: 'La longitude doit être comprise entre -180 et 180.' })
+  @Max(180, { message: 'La longitude doit être comprise entre -180 et 180.' })
+  lng: number;
+}
+
+export class LocationDto {
+  @ApiProperty({ description: 'Adresse', required: false, example: '123 Rue de la Paix' })
+  @IsOptional()
+  @IsString({ message: "L'adresse doit être une chaîne de caractères." })
+  @MaxLength(255)
+  address?: string;
+
+  @ApiProperty({ description: 'Ville', required: false, example: 'Paris' })
+  @IsOptional()
+  @IsString({ message: 'La ville doit être une chaîne de caractères.' })
+  @MaxLength(100)
+  city?: string;
+
+  @ApiProperty({ description: 'Code postal', required: false, example: '75001' })
+  @IsOptional()
+  @IsString({ message: 'Le code postal doit être une chaîne de caractères.' })
+  @MaxLength(20)
+  postalCode?: string;
+
+  @ApiProperty({ description: 'Pays', required: false, example: 'France' })
+  @IsOptional()
+  @IsString({ message: 'Le pays doit être une chaîne de caractères.' })
+  @MaxLength(100)
+  country?: string;
+
+  @ApiProperty({ description: 'Coordonnées GPS (requises pour la recherche par distance)' })
+  @IsDefined({ message: 'Les coordonnées GPS sont obligatoires.' })
+  @ValidateNested()
+  @Type(() => CoordinatesDto)
+  coordinates: CoordinatesDto;
+}
 
 export class CreateEventDto {
   @ApiProperty({ description: "Nom de l'événement", maxLength: 100, example: 'Concert de Jazz' })
@@ -47,7 +95,8 @@ export class CreateEventDto {
   pricing: number;
 
   @ApiProperty({
-    description: "Localisation de l'événement (format JSON)",
+    description: "Localisation de l'événement",
+    type: LocationDto,
     example: {
       address: '123 Rue de la Paix',
       city: 'Paris',
@@ -56,8 +105,10 @@ export class CreateEventDto {
       coordinates: { lat: 48.8566, lng: 2.3522 },
     },
   })
-  @IsObject({ message: 'La localisation doit être un objet JSON valide.' })
-  location: Record<string, any>;
+  @IsDefined({ message: 'La localisation est obligatoire.' })
+  @ValidateNested()
+  @Type(() => LocationDto)
+  location: LocationDto;
 
   @ApiProperty({
     description: 'ID de la société organisatrice',
@@ -84,7 +135,10 @@ export class CreateEventDto {
   })
   @IsOptional()
   @IsArray({ message: 'Les catégories doivent être un tableau.' })
-  @IsEnum(EventCategory, { each: true, message: 'Chaque catégorie doit être une valeur valide de EventCategory.' })
+  @IsEnum(EventCategory, {
+    each: true,
+    message: 'Chaque catégorie doit être une valeur valide de EventCategory.',
+  })
   categories?: EventCategory[];
 
   @ApiProperty({

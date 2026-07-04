@@ -2,14 +2,14 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import type { UserType, AuthContextType } from '../../lib/types/AuthType';
 import { isValidUser } from '@/utils/validators';
-import * as tokenService from '@/lib/services/tokenService';
 import * as authService from '@/lib/services/authService';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 // Contexte d'authentification global
-// Gère l'état de l'utilisateur connecté dans toute l'application
-// Utilise authService pour les appels API et tokenService pour les tokens
+// Gère l'état de l'utilisateur connecté dans toute l'application.
+// L'authentification repose sur des cookies HttpOnly : le client ne
+// manipule jamais les tokens, il interroge /users/me pour connaître l'état.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,50 +20,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser();
   }, []);
 
-  // Vérifie et rafraîchit les informations utilisateur au chargement
-  // Gère automatiquement le renouvellement des tokens expirés
-  // Empêche les appels concurrents avec refreshPromise
+  // Vérifie et rafraîchit les informations utilisateur.
+  // Si l'access token a expiré, tente un refresh (rotation côté serveur) puis réessaie.
+  // Empêche les appels concurrents avec refreshPromise.
   const refreshUser = async () => {
-    // Empêcher les appels concurrents (race condition)
     if (refreshPromise.current) {
       return refreshPromise.current;
     }
 
-    // Créer une nouvelle promesse pour ce refresh
     refreshPromise.current = (async () => {
-      let token = tokenService.getAccessToken();
-
-      if (!token) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        // Tenter de récupérer les infos utilisateur
-        let userData = await authService.getUserAPI(token);
+        let userData = await authService.getUserAPI();
 
-        // Si le token d'accès a expiré (null), essayer de le rafraîchir
+        // Access token expiré ou absent : tenter un refresh puis réessayer
         if (!userData) {
-          const refreshed = await refreshTokens();
+          const refreshed = await authService.refreshTokensAPI();
           if (refreshed) {
-            // Récupérer le nouveau token et réessayer
-            token = tokenService.getAccessToken();
-            if (token) {
-              userData = await authService.getUserAPI(token);
-            }
+            userData = await authService.getUserAPI();
           }
         }
 
-        if (userData) {
-          setUser(userData);
-        } else {
-          tokenService.clearTokens();
-          setUser(null);
-        }
+        setUser(userData ?? null);
       } catch (error) {
-        console.error('Erreur lors de la récupération de l\'utilisateur:', error);
-        tokenService.clearTokens();
+        console.error("Erreur lors de la récupération de l'utilisateur:", error);
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -74,13 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return refreshPromise.current;
   };
 
-  // Connecte l'utilisateur avec email/password et stocke les tokens
+  // Connecte l'utilisateur avec email/password (cookies posés par le serveur)
   const login = async (email: string, password: string) => {
     try {
       const { response, data } = await authService.loginAPI(email, password);
 
       if (response.ok) {
-        tokenService.setTokens(data.access_token, data.refresh_token);
         setUser(data.user);
         return { success: true, message: `User: ${JSON.stringify(data.user.name)} bien connecté.` };
       }
@@ -107,11 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { response, data } = await authService.registerAPI(name, email, password);
       if (response.ok) {
-        tokenService.setTokens(data.access_token, data.refresh_token);
         setUser(data.user);
         return {
           success: true,
-          message: `${data.name}, votre compte a été créé avec succés, vous êtes maintenant connecté.`,
+          message: `${data.user?.name}, votre compte a été créé avec succés, vous êtes maintenant connecté.`,
         };
       }
       return {
@@ -128,36 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Déconnecte l'utilisateur et supprime les tokens
+  // Déconnecte l'utilisateur (révocation de la session côté serveur)
   const logout = async () => {
-    const token = tokenService.getAccessToken();
-    if (token) {
-      await authService.logoutAPI(token);
-    }
-    tokenService.clearTokens();
+    await authService.logoutAPI();
     setUser(null);
   };
 
-  // Renouvelle les tokens via le refresh token
+  // Renouvelle les tokens via le cookie refresh
   // Retourne true si le renouvellement a réussi
   const refreshTokens = async (): Promise<boolean> => {
-    const currentRefreshToken = tokenService.getRefreshToken();
-    if (!currentRefreshToken) return false;
-
-    try {
-      const data = await authService.refreshTokensAPI(currentRefreshToken);
-
-      if (data) {
-        tokenService.setTokens(data.access_token, data.refresh_token);
-        return true;
-      }
-    } catch {
-      console.error('Échec du renouvellement des tokens');
+    const refreshed = await authService.refreshTokensAPI();
+    if (!refreshed) {
+      setUser(null);
     }
-
-    tokenService.clearTokens();
-    setUser(null);
-    return false;
+    return refreshed;
   };
 
   return (

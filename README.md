@@ -26,7 +26,7 @@ IAKOA est une application web qui permet de découvrir, créer et gérer des év
 
 ## Prérequis
 
-- Node.js 18+ installé sur la machine.
+- Node.js 22+ installé sur la machine.
 - PostgreSQL 13+ ou instance managée (local ou cloud).
 - npm  pour la gestion des dépendances.
 - Optionnel : Docker si vous utilisez une stack conteneurisée.

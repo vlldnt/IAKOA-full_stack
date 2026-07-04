@@ -93,7 +93,7 @@ describe('AuthService', () => {
       expect(user!.refreshToken).not.toBe(result.refresh_token);
 
       // Vérifier que le refresh token est bien hashé
-      const isMatch = bcrypt.compareSync(result.refresh_token, user!.refreshToken!);
+      const isMatch = bcrypt.compareSync(result.refresh_token, user!.refreshToken);
       expect(isMatch).toBe(true);
     });
   });
