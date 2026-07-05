@@ -41,17 +41,26 @@ export class FilterEventsDto {
   @Min(0)
   radius?: number = 5;
 
-  @ApiPropertyOptional({ description: 'Catégories séparées par des virgules', example: 'CONCERT,BAR' })
+  @ApiPropertyOptional({
+    description: 'Catégories séparées par des virgules',
+    example: 'CONCERT,BAR',
+  })
   @IsOptional()
   @IsString()
   categories?: string;
 
-  @ApiPropertyOptional({ description: 'Date de début (ISO 8601)', example: '2025-03-01T00:00:00.000Z' })
+  @ApiPropertyOptional({
+    description: 'Date de début (ISO 8601)',
+    example: '2025-03-01T00:00:00.000Z',
+  })
   @IsOptional()
   @IsString()
   dateFrom?: string;
 
-  @ApiPropertyOptional({ description: 'Date de fin (ISO 8601)', example: '2025-12-31T23:59:59.999Z' })
+  @ApiPropertyOptional({
+    description: 'Date de fin (ISO 8601)',
+    example: '2025-12-31T23:59:59.999Z',
+  })
   @IsOptional()
   @IsString()
   dateTo?: string;

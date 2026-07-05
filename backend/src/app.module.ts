@@ -10,6 +10,10 @@ import { CompaniesModule } from './companies/companies.module';
 import { EventsModule } from './events/events.module';
 import { MediaModule } from './media/media.module';
 import { UserFavoritesModule } from './user-favorites/user-favorites.module';
+import { MailModule } from './mail/mail.module';
+import { CategoriesModule } from './categories/categories.module';
+import { PlacesModule } from './places/places.module';
+import { AdminModule } from './admin/admin.module';
 import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
 
 @Module({
@@ -23,12 +27,16 @@ import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
       },
     ]),
     PrismaModule,
+    MailModule,
     UsersModule,
     AuthModule,
     CompaniesModule,
     EventsModule,
     MediaModule,
     UserFavoritesModule,
+    CategoriesModule,
+    PlacesModule,
+    AdminModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

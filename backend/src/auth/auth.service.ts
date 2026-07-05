@@ -1,15 +1,20 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomUUID } from 'crypto';
+import { VerificationTokenType } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { LoginUserDto } from '../users/dto/login-user.dto';
 import { RegisterUserDto } from '../users/dto/register-user.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { requireEnv } from '../config/env';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '30d';
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 heure
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 heures
 
 export interface AuthTokens {
   access_token: string;
@@ -22,6 +27,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private prisma: PrismaService,
+    private mailService: MailService,
   ) {}
 
   async register(registerUserDto: RegisterUserDto, userAgent?: string) {
@@ -31,6 +37,13 @@ export class AuthService {
       isCreator: false,
     });
     const tokens = await this.createSession(user.id, user.email, userAgent);
+
+    // Best-effort : un échec de l'email de vérification ne bloque pas l'inscription
+    try {
+      await this.sendEmailVerification(user.id);
+    } catch {
+      // ignoré volontairement
+    }
 
     return {
       user,
@@ -157,7 +170,10 @@ export class AuthService {
     email: string,
     sessionId: string,
   ): Promise<AuthTokens> {
-    const payload = { sub: userId, email, sid: sessionId };
+    // jti : garantit l'unicité de chaque token, même signés dans la même
+    // seconde (sinon payload + iat identiques → tokens identiques, et la
+    // rotation deviendrait un no-op)
+    const payload = { sub: userId, email, sid: sessionId, jti: randomUUID() };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -180,6 +196,158 @@ export class AuthService {
   // et ne tronque pas les entrées longues comme les JWT (limite bcrypt : 72 octets).
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Demande de réinitialisation de mot de passe.
+   * Répond toujours pareil, que l'email existe ou non (anti-énumération).
+   */
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const message = 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.';
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return { message };
+    }
+
+    const token = await this.issueVerificationToken(
+      user.id,
+      VerificationTokenType.PASSWORD_RESET,
+      PASSWORD_RESET_TTL_MS,
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    void this.mailService.sendPasswordReset(
+      user.email,
+      user.name,
+      `${frontendUrl}/reset-password?token=${token}`,
+    );
+
+    return { message };
+  }
+
+  /**
+   * Réinitialisation effective : consomme le token, change le mot de passe
+   * et révoque toutes les sessions (un mot de passe compromis implique
+   * que les sessions actives le sont peut-être aussi).
+   */
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const verification = await this.consumeVerificationToken(
+      token,
+      VerificationTokenType.PASSWORD_RESET,
+    );
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: verification.userId },
+        data: { password: hashedPassword },
+      }),
+      this.prisma.verificationToken.update({
+        where: { id: verification.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshSession.updateMany({
+        where: { userId: verification.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Mot de passe réinitialisé. Vous pouvez vous connecter.' };
+  }
+
+  /**
+   * Envoie (ou renvoie) l'email de vérification d'adresse.
+   */
+  async sendEmailVerification(userId: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Utilisateur introuvable');
+    }
+    if (user.emailVerifiedAt) {
+      return { message: 'Email déjà vérifié.' };
+    }
+
+    const token = await this.issueVerificationToken(
+      user.id,
+      VerificationTokenType.EMAIL_VERIFICATION,
+      EMAIL_VERIFICATION_TTL_MS,
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    void this.mailService.sendEmailVerification(
+      user.email,
+      user.name,
+      `${frontendUrl}/verify-email?token=${token}`,
+    );
+
+    return { message: 'Email de vérification envoyé.' };
+  }
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const verification = await this.consumeVerificationToken(
+      token,
+      VerificationTokenType.EMAIL_VERIFICATION,
+    );
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: verification.userId },
+        data: { emailVerifiedAt: new Date() },
+      }),
+      this.prisma.verificationToken.update({
+        where: { id: verification.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Email vérifié avec succès.' };
+  }
+
+  /**
+   * Émet un token à usage unique : le token en clair part dans l'email,
+   * seul son hash est stocké. Les anciens tokens du même type sont invalidés.
+   */
+  private async issueVerificationToken(
+    userId: string,
+    type: VerificationTokenType,
+    ttlMs: number,
+  ): Promise<string> {
+    const token = randomBytes(32).toString('hex');
+
+    await this.prisma.$transaction([
+      this.prisma.verificationToken.deleteMany({
+        where: { userId, type, usedAt: null },
+      }),
+      this.prisma.verificationToken.create({
+        data: {
+          tokenHash: this.hashToken(token),
+          type,
+          expiresAt: new Date(Date.now() + ttlMs),
+          userId,
+        },
+      }),
+    ]);
+
+    return token;
+  }
+
+  private async consumeVerificationToken(token: string, type: VerificationTokenType) {
+    const verification = await this.prisma.verificationToken.findUnique({
+      where: { tokenHash: this.hashToken(token) },
+    });
+
+    if (
+      !verification ||
+      verification.type !== type ||
+      verification.usedAt ||
+      verification.expiresAt < new Date()
+    ) {
+      throw new BadRequestException('Lien invalide ou expiré. Refaites une demande.');
+    }
+
+    return verification;
   }
 
   async validateUserById(userId: string) {

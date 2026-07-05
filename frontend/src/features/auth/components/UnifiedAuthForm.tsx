@@ -10,6 +10,7 @@ import {
 } from '@/utils/validators';
 import { useAuth } from '../AuthContext';
 import SocialConnectIcons from './SocialConnectIcons';
+import ForgotPasswordForm from './ForgotPasswordForm';
 import { ValidatedInput } from '@/components/ui/ValidatedInput';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 
@@ -33,6 +34,7 @@ function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
 
   const { login, register } = useAuth();
 
@@ -86,6 +88,10 @@ function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
       {label}
     </span>
   );
+
+  if (forgotMode) {
+    return <ForgotPasswordForm initialEmail={loginEmail} onBack={() => setForgotMode(false)} />;
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 w-full">
@@ -172,6 +178,7 @@ function UnifiedAuthForm({ isLogin }: UnifiedAuthFormProps) {
             <div className="text-right">
               <button
                 type="button"
+                onClick={() => setForgotMode(true)}
                 className="text-sm text-gray-500 hover:text-iakoa-blue hover:underline"
               >
                 Mot de passe oublié ?

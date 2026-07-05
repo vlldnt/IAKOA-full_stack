@@ -2,15 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, MapPin, Sliders, X } from 'lucide-react';
 import { FilterMenu, type FilterState } from './FilterMenu';
 import { useFilters } from '@/features/events_page/FilterContext';
-
-// Type pour les résultats de ville
-interface CityResult {
-  name: string;
-  region: string;
-  lat: number;
-  lon: number;
-  postcode?: string;
-}
+import { useCitySearch, formatCityLabel, type CityResult } from '@/lib/hooks/useCitySearch';
 
 // Barre de recherche avec deux champs: mots-clés et ville
 // Utilise les icônes lucide-react au lieu de SVG inline
@@ -25,14 +17,20 @@ export function SearchBars() {
     null,
   );
   const [showFilterTooltip, setShowFilterTooltip] = useState(false);
-  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
   const [cityFocused, setCityFocused] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [geoError, setGeoError] = useState<string | null>(null);
-  const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cityInputRef = useRef<HTMLInputElement>(null);
   const skipDropdownRef = useRef(false);
+
+  // Autocomplétion de villes partagée avec le menu de filtres
+  const {
+    suggestions: citySuggestions,
+    showSuggestions: showCitySuggestions,
+    searchCities,
+    searchCitiesDebounced: handleCitySearch,
+    hideSuggestions,
+  } = useCitySearch();
 
   // Synchroniser les filtres globaux avec l'état local
   useEffect(() => {
@@ -77,11 +75,10 @@ export function SearchBars() {
   }, [citySuggestions]);
 
   const selectSuggestion = (c: CityResult) => {
-    const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
-    setCity(cityText);
+    setCity(formatCityLabel(c));
     setCityLat(c.lat);
     setCityLon(c.lon);
-    setShowCitySuggestions(false);
+    hideSuggestions();
     setCityFocused(false);
     setHighlightedIndex(-1);
     // Refocus input without reopening dropdown, then search is ready on Enter
@@ -107,14 +104,13 @@ export function SearchBars() {
         selectSuggestion(citySuggestions[highlightedIndex]);
         // Immediately trigger search with the selected city
         const c = citySuggestions[highlightedIndex];
-        const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
         updateKeyword(keyword);
-        updateCity(cityText, c.lat, c.lon);
+        updateCity(formatCityLabel(c), c.lat, c.lon);
       } else {
         handleSearch();
       }
     } else if (e.key === 'Escape') {
-      setShowCitySuggestions(false);
+      hideSuggestions();
       setCityFocused(false);
       setHighlightedIndex(-1);
     }
@@ -128,45 +124,6 @@ export function SearchBars() {
     setAppliedFilters(filters);
     // TODO: Appliquer les filtres à la recherche
     console.log('Filtres appliqués:', filters);
-  };
-
-  const searchCities = async (query: string) => {
-    if (query.length < 2) {
-      setShowCitySuggestions(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement&boost=population&limit=5`
-      );
-      const data = await response.json();
-
-      const cities: CityResult[] = data.map((item: any) => ({
-        name: item.nom,
-        region: item.departement?.nom || '',
-        lat: item.centre?.coordinates?.[1] || 0,
-        lon: item.centre?.coordinates?.[0] || 0,
-        postcode: item.codesPostaux?.[0],
-      }));
-
-      setCitySuggestions(cities);
-      setShowCitySuggestions(cities.length > 0);
-    } catch (error) {
-      console.error('Erreur lors de la recherche de villes:', error);
-      setCitySuggestions([]);
-      setShowCitySuggestions(false);
-    }
-  };
-
-  const handleCitySearch = (value: string) => {
-    if (citySearchTimeoutRef.current) {
-      clearTimeout(citySearchTimeoutRef.current);
-    }
-
-    citySearchTimeoutRef.current = setTimeout(() => {
-      searchCities(value);
-    }, 300);
   };
 
   const showGeoError = (msg: string) => {
@@ -255,7 +212,7 @@ export function SearchBars() {
               }}
               onBlur={() => {
                 setTimeout(() => {
-                  setShowCitySuggestions(false);
+                  hideSuggestions();
                   setCityFocused(false);
                   setHighlightedIndex(-1);
                 }, 150);
@@ -269,7 +226,7 @@ export function SearchBars() {
                   onClick={() => {
                     handleGetLocation();
                     setCityFocused(false);
-                    setShowCitySuggestions(false);
+                    hideSuggestions();
                   }}
                   className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2 border-b border-gray-100"
                 >

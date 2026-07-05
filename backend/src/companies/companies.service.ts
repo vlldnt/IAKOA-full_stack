@@ -156,4 +156,22 @@ export class CompaniesService {
       throw error;
     }
   }
+
+  /**
+   * Validation d'une entreprise par un administrateur.
+   */
+  async setValidation(id: string, isValidated: boolean): Promise<CompanyResponseDto> {
+    try {
+      const company = await this.prisma.company.update({
+        where: { id },
+        data: { isValidated },
+      });
+      return new CompanyResponseDto(company);
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Entreprise avec l'ID ${id} non trouvée.`);
+      }
+      throw error;
+    }
+  }
 }

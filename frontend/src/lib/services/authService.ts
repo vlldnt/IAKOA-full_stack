@@ -55,6 +55,42 @@ export async function refreshTokensAPI(): Promise<boolean> {
   }
 }
 
+// Demande l'envoi d'un lien de réinitialisation de mot de passe
+export async function forgotPasswordAPI(email: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Réinitialise le mot de passe avec le token reçu par email
+export async function resetPasswordAPI(token: string, password: string) {
+  const res = await fetch(`${API_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, message: data.message as string | undefined };
+}
+
+// Confirme l'adresse email avec le token reçu par email
+export async function verifyEmailAPI(token: string) {
+  const res = await fetch(`${API_URL}/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, message: data.message as string | undefined };
+}
+
 // Récupère les informations de l'utilisateur connecté
 export async function getUserAPI() {
   try {

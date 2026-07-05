@@ -1,104 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import {
-  MapPin,
-  Check,
-  Music,
-  Dumbbell,
-  Gamepad2,
-  ChefHat,
-  Brain,
-  ShoppingBag,
-  Theater,
-  SkipForward,
-  Palette,
-  Film,
-  BookOpen,
-  Mountain,
-  Wind,
-  UtensilsCrossed,
-  Lightbulb,
-  Globe,
-  Heart,
-  Users,
-  Sparkles,
-  Wine,
-  Leaf,
-} from 'lucide-react';
-import { FILTER_CATEGORY_GROUPS, getCategoryHexColor } from '@/lib/constants/filter-categories';
-import { MapPreview } from './MapPreview';
+import { FILTER_CATEGORY_GROUPS } from '@/lib/constants/filter-categories';
+import type { DatePreset } from '@/lib/utils/date-presets';
 import iakoaLogo from '@/assets/logo-iakoa.svg';
 import { useFilters } from '@/features/events_page/FilterContext';
-
-// Type pour les résultats de ville
-interface CityResult {
-  name: string;
-  region: string;
-  lat: number;
-  lon: number;
-  postcode?: string;
-}
-
-// Mapping des IDs de sous-catégories à leurs icônes
-const SUBCATEGORY_ICONS: Record<string, React.ComponentType<any>> = {
-  // Arts & Culture
-  CONCERT: Music,
-  THEATRE: Theater,
-  SPECTACLE: SkipForward,
-  DANSE: Music,
-  CINEMA: Film,
-  ART: Palette,
-  PEINTURE: Palette,
-  PHOTOGRAPHIE: Film,
-  EXPOSITION: Sparkles,
-  MUSEE: BookOpen,
-  LECTURE: BookOpen,
-  // Sports & Bien-être
-  TRAIL: Mountain,
-  SPORT: Dumbbell,
-  COMPETITION: Dumbbell,
-  RANDONNEE: Mountain,
-  NAUTISME: Wind,
-  YOGA: Heart,
-  MEDITATION: Heart,
-  BIENETRE: Heart,
-  DEVELOPPEMENTPERSONNEL: Brain,
-  // Loisirs & Divertissements
-  JEUX: Gamepad2,
-  JEUXVIDEO: Gamepad2,
-  ESPORT: Gamepad2,
-  MANGA: BookOpen,
-  COSPLAY: Sparkles,
-  FESTIVAL: Sparkles,
-  FETELOCALE: Users,
-  FERIA: Users,
-  SOIREE: Users,
-  JOURNEE: Sparkles,
-  // Gastronomie
-  REPAS: UtensilsCrossed,
-  DEJEUNER: UtensilsCrossed,
-  COURSDECUISINE: ChefHat,
-  DEGUSTATION: Wine,
-  BAR: Wine,
-  // Savoir & Découverte
-  CONFERENCE: Brain,
-  FORMATION: BookOpen,
-  LANGUES: Globe,
-  SCIENCE: Lightbulb,
-  DECOUVERTE: Sparkles,
-  PATRIMOINE: Globe,
-  VISITE: Globe,
-  ATELIER: Lightbulb,
-  // Marché & Commerce
-  MARCHE: ShoppingBag,
-  BROCANTE: ShoppingBag,
-  VIDEGRENIER: ShoppingBag,
-  ENCHERES: ShoppingBag,
-  // Causes Sociales & Écologie
-  ANIMAUX: Heart,
-  BENEVOLAT: Users,
-  ECOLOGIE: Leaf,
-  SOLIDARITE: Heart,
-};
+import { FilterMenuSearchBar } from './filter-menu/FilterMenuSearchBar';
+import { LocationSection } from './filter-menu/LocationSection';
+import { CategoryGroupsSection } from './filter-menu/CategoryGroupsSection';
+import { DateFilter, PriceFilter } from './filter-menu/DatePriceFilters';
+import { SelectionPanel } from './filter-menu/SelectionPanel';
 
 interface FilterMenuProps {
   isOpen: boolean;
@@ -115,36 +24,9 @@ export interface FilterState {
   selectedCategories: string[];
 }
 
-const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
-
-
-function fmtDate(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-function getThisWeekDates() {
-  const today = new Date();
-  const day = today.getDay();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() + (day === 0 ? 0 : 7 - day));
-  return { from: fmtDate(today), to: fmtDate(sunday) };
-}
-function getWeekendDates() {
-  const today = new Date();
-  const day = today.getDay();
-  if (day === 6) {
-    const sun = new Date(today); sun.setDate(today.getDate() + 1);
-    return { from: fmtDate(today), to: fmtDate(sun) };
-  }
-  if (day === 0) return { from: fmtDate(today), to: fmtDate(today) };
-  const sat = new Date(today); sat.setDate(today.getDate() + (6 - day));
-  const sun = new Date(sat);   sun.setDate(sat.getDate() + 1);
-  return { from: fmtDate(sat), to: fmtDate(sun) };
-}
-function getTodayDates() {
-  const today = new Date();
-  return { from: fmtDate(today), to: fmtDate(today) };
-}
-
+// Menu plein écran de filtres : localisation, catégories, date, prix.
+// Porte l'état local (brouillon) des filtres ; ils ne sont poussés dans le
+// FilterContext global qu'au clic sur "Appliquer".
 export function FilterMenu({
   isOpen,
   onClose,
@@ -163,14 +45,13 @@ export function FilterMenu({
     updateDateRange,
     updatePrice,
   } = useFilters();
+
+  // Brouillon local des filtres
   const [radius, setRadius] = useState(filters.radius);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     filters.selectedCategories,
   );
-  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
-  const [userPosition, setUserPosition] = useState<[number, number] | null>(
-    null,
-  );
+  const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [cityLat, setCityLat] = useState<number | undefined>(filters.latitude);
   const [cityLon, setCityLon] = useState<number | undefined>(filters.longitude);
   const [dateFrom, setDateFrom] = useState(filters.dateFrom || '');
@@ -182,18 +63,14 @@ export function FilterMenu({
     filters.priceMax !== undefined ? String(filters.priceMax / 100) : '',
   );
   const [isFree, setIsFree] = useState(filters.isFree);
-  const [activeDatePreset, setActiveDatePreset] = useState<'today' | 'week' | 'weekend' | null>(null);
+  const [activeDatePreset, setActiveDatePreset] = useState<DatePreset | null>(null);
   const [cityError, setCityError] = useState(false);
-  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
-  const [cityFocused, setCityFocused] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
-  const hoveredGroupRef = useRef<HTMLDivElement>(null);
+
+  // Survol des groupes de catégories (colonne 2 → panneau colonne 3)
+  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverEnterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const citySearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
 
   // Synchroniser les filtres locaux avec les filtres globaux
   useEffect(() => {
@@ -219,12 +96,12 @@ export function FilterMenu({
 
   const handleGeolocation = () => {
     if (!navigator.geolocation) {
-      showGeoError("Géolocalisation non supportée par votre navigateur");
+      showGeoError('Géolocalisation non supportée par votre navigateur');
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (location) => {
+      location => {
         const lat = location.coords.latitude;
         const lon = location.coords.longitude;
         setUserPosition([lat, lon]);
@@ -233,84 +110,47 @@ export function FilterMenu({
         onCityChange?.('Ma localisation');
       },
       () => {
-        showGeoError("Localisation refusée — vérifiez les permissions du navigateur");
+        showGeoError('Localisation refusée — vérifiez les permissions du navigateur');
       },
     );
   };
 
-  const searchCities = async (query: string) => {
-    if (query.length < 2) {
-      setShowCitySuggestions(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement&boost=population&limit=5`,
-      );
-      const data = await response.json();
-
-      const cities: CityResult[] = data.map((item: any) => ({
-        name: item.nom,
-        region: item.departement?.nom || '',
-        lat: item.centre?.coordinates?.[1] || 0,
-        lon: item.centre?.coordinates?.[0] || 0,
-        postcode: item.codesPostaux?.[0],
-      }));
-
-      setCitySuggestions(cities);
-      setShowCitySuggestions(cities.length > 0);
-    } catch (error) {
-      console.error('Erreur lors de la recherche de villes:', error);
-      setCitySuggestions([]);
-      setShowCitySuggestions(false);
-    }
-  };
-
-  const handleCitySearch = (value: string) => {
-    if (citySearchTimeoutRef.current) {
-      clearTimeout(citySearchTimeoutRef.current);
-    }
-
-    citySearchTimeoutRef.current = setTimeout(() => {
-      searchCities(value);
-    }, 300);
-  };
-
   const handleCategoryToggle = (categoryId: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(categoryId)
-        ? prev.filter((id) => id !== categoryId)
-        : [...prev, categoryId],
+    setSelectedCategories(prev =>
+      prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId],
     );
   };
 
   const handleSelectAllInGroup = (groupId: string) => {
-    const group = FILTER_CATEGORY_GROUPS.find((g) => g.id === groupId);
+    const group = FILTER_CATEGORY_GROUPS.find(g => g.id === groupId);
     if (!group) return;
 
-    const groupCategoryIds = group.subcategories.map((sub) => sub.id);
-    const allSelected = groupCategoryIds.every((id) =>
-      selectedCategories.includes(id),
-    );
+    const groupCategoryIds = group.subcategories.map(sub => sub.id);
+    const allSelected = groupCategoryIds.every(id => selectedCategories.includes(id));
 
-    setSelectedCategories((prev) => {
+    setSelectedCategories(prev => {
       if (allSelected) {
-        return prev.filter((id) => !groupCategoryIds.includes(id));
-      } else {
-        const newCategories = new Set(prev);
-        groupCategoryIds.forEach((id) => newCategories.add(id));
-        return Array.from(newCategories);
+        return prev.filter(id => !groupCategoryIds.includes(id));
       }
+      const newCategories = new Set(prev);
+      groupCategoryIds.forEach(id => newCategories.add(id));
+      return Array.from(newCategories);
     });
   };
 
-  const getSelectedCount = (groupId: string) => {
-    const group = FILTER_CATEGORY_GROUPS.find((g) => g.id === groupId);
-    if (!group) return 0;
-    return group.subcategories.filter((sub) =>
-      selectedCategories.includes(sub.id),
-    ).length;
+  const clearHoverTimeouts = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    if (hoverEnterTimeoutRef.current) clearTimeout(hoverEnterTimeoutRef.current);
+  };
+
+  const handleGroupHoverStart = (groupId: string) => {
+    clearHoverTimeouts();
+    hoverEnterTimeoutRef.current = setTimeout(() => setHoveredGroup(groupId), 120);
+  };
+
+  const scheduleHoverEnd = (delayMs: number) => {
+    if (hoverEnterTimeoutRef.current) clearTimeout(hoverEnterTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => setHoveredGroup(null), delayMs);
   };
 
   const handleApply = () => {
@@ -368,515 +208,94 @@ export function FilterMenu({
           overflow: 'hidden',
         }}
       >
-        {/* Header avec Logo et SearchBar */}
+        {/* Header avec logo et barre de recherche */}
         <div className="bg-linear-to-r from-gray-50 to-gray-100 px-6 py-2 border-b border-gray-200 shrink-0">
           <div className="max-w-6xl mx-auto">
-            {/* Logo et titre */}
             <div className="flex items-center justify-between mb-2">
               <img src={iakoaLogo} alt="Logo IAKOA" className="w-32" />
             </div>
 
-            {/* SearchBar */}
-            <div className={`flex items-center bg-white rounded-full px-4 py-2 gap-2 shadow-sm transition-all ${cityError ? 'ring-2 ring-red-400 shadow-red-100' : ''}`}>
-              {/* Champ mot-clé */}
-              <input
-                type="text"
-                placeholder="Mots-clés..."
-                className="bg-transparent outline-none text-sm flex-1 min-w-0"
-                value={keyword}
-                onChange={(e) => onKeywordChange?.(e.target.value)}
-              />
-
-              {/* Séparateur vertical - au milieu */}
-              <div className="flex items-center h-6">
-                <div className="w-px bg-gray-300 h-5" />
-              </div>
-
-              {/* Champ ville avec autocomplétion */}
-              <div className="flex-1 min-w-0 relative">
-                <input
-                  type="text"
-                  placeholder={cityError ? '⚠ Ville requise' : 'Ville...'}
-                  className={`bg-transparent outline-none text-sm w-full ${city === 'Ma localisation' ? 'text-iakoa-blue font-bold' : ''} ${cityError ? 'placeholder:text-red-500 placeholder:font-semibold' : ''}`}
-                  value={city}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value) setCityError(false);
-                    onCityChange?.(value);
-                    handleCitySearch(value);
-                  }}
-                  onFocus={() => {
-                    setCityFocused(true);
-                    if (city.length >= 2) searchCities(city);
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      setShowCitySuggestions(false);
-                      setCityFocused(false);
-                    }, 200);
-                  }}
-                />
-
-                {/* Erreur géolocalisation */}
-                {geoError && (
-                  <div className="absolute top-full left-0 right-0 mt-1 z-200 bg-red-50 border border-red-200 text-red-600 text-xs font-medium px-3 py-2 rounded-lg shadow">
-                    {geoError}
-                  </div>
-                )}
-
-                {/* Dropdown : Ma localisation + suggestions villes */}
-                {(cityFocused || showCitySuggestions) && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-200">
-                    {/* Option Ma localisation */}
-                    <button
-                      onClick={() => {
-                        handleGeolocation();
-                        setCityFocused(false);
-                        setShowCitySuggestions(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex items-center gap-2 border-b border-gray-100"
-                    >
-                      <MapPin className="h-3.5 w-3.5 text-iakoa-blue shrink-0" />
-                      <span className="font-bold text-sm text-iakoa-blue">Ma localisation</span>
-                    </button>
-
-                    {/* Suggestions de villes */}
-                    {citySuggestions.map((c) => (
-                      <button
-                        key={`${c.name}-${c.lat}-${c.lon}`}
-                        onClick={() => {
-                          const cityText = c.postcode ? `${c.name} (${c.postcode})` : c.name;
-                          onCityChange?.(cityText);
-                          setCityLat(c.lat);
-                          setCityLon(c.lon);
-                          setUserPosition([c.lat, c.lon]);
-                          setShowCitySuggestions(false);
-                          setCityFocused(false);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 transition-colors text-sm"
-                      >
-                        <span className="font-medium">{c.name}</span>
-                        <span className="text-gray-500 italic ml-2">({c.region})</span>
-                        {c.postcode && (
-                          <span className="text-gray-400 italic text-xs ml-2">({c.postcode})</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <FilterMenuSearchBar
+              keyword={keyword}
+              city={city}
+              cityError={cityError}
+              geoError={geoError}
+              onKeywordChange={onKeywordChange}
+              onCityChange={onCityChange}
+              onCityPicked={(lat, lon) => {
+                setCityLat(lat);
+                setCityLon(lon);
+                setUserPosition([lat, lon]);
+              }}
+              onGeolocate={handleGeolocation}
+              onCityCleared={() => setCityError(false)}
+            />
           </div>
         </div>
 
         {/* Contenu des filtres - 3 colonnes */}
         <div className="flex-1 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 h-full">
-          <div className="flex flex-col lg:flex-row gap-4 h-full">
-            {/* Colonne 1: Carte avec Rayon */}
-            <div className="shrink-0 w-full lg:w-90 overflow-y-auto py-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Localisation
-              </h3>
-              <div className="space-y-2">
-                {/* Slider avec 7 crans */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">
-                      Rayon
-                    </span>
-                    <span className="text-xl font-bold text-iakoa-blue">
-                      {radius} km
-                    </span>
-                  </div>
+          <div className="max-w-6xl mx-auto px-4 h-full">
+            <div className="flex flex-col lg:flex-row gap-4 h-full">
+              {/* Colonne 1: rayon + carte */}
+              <LocationSection
+                radius={radius}
+                userPosition={userPosition}
+                onRadiusChange={setRadius}
+              />
 
-                  <input
-                    type="range"
-                    min="0"
-                    max="6"
-                    value={RADIUS_PRESETS.indexOf(radius)}
-                    onChange={(e) =>
-                      setRadius(RADIUS_PRESETS[Number(e.target.value)])
-                    }
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-iakoa-blue"
-                    style={{
-                      background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(RADIUS_PRESETS.indexOf(radius) / 6) * 100}%, #E5E7EB ${(RADIUS_PRESETS.indexOf(radius) / 6) * 100}%, #E5E7EB 100%)`,
+              {/* Colonne 2: groupes de catégories + date + prix */}
+              <div className="flex-1 overflow-y-auto py-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Catégories</h3>
+                <div className="grid grid-cols-1 gap-1.5 relative">
+                  <CategoryGroupsSection
+                    selectedCategories={selectedCategories}
+                    onSelectAllInGroup={handleSelectAllInGroup}
+                    onGroupHoverStart={handleGroupHoverStart}
+                    onGroupHoverEnd={() => scheduleHoverEnd(800)}
+                  />
+                  <DateFilter
+                    dateFrom={dateFrom}
+                    dateTo={dateTo}
+                    activePreset={activeDatePreset}
+                    onChange={(from, to, preset) => {
+                      setDateFrom(from);
+                      setDateTo(to);
+                      setActiveDatePreset(preset);
                     }}
                   />
-
-                  {/* Marqueurs des valeurs */}
-                  <div className="flex justify-between text-xs text-gray-600 font-medium">
-                    {RADIUS_PRESETS.map((preset) => (
-                      <span key={preset} className="text-center w-6">
-                        {preset}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Carte - cachée en mobile/tablette */}
-                <div className="hidden lg:block">
-                  <MapPreview radius={radius} userPosition={userPosition} />
+                  <PriceFilter
+                    priceMax={priceMax}
+                    isFree={isFree}
+                    onPriceMaxChange={setPriceMax}
+                    onIsFreeChange={setIsFree}
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Colonne 2: Catégories principales */}
-            <div className="flex-1 overflow-y-auto py-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Catégories
-              </h3>
-              <div className="grid grid-cols-1 gap-1.5 relative">
-                {FILTER_CATEGORY_GROUPS.map((group) => {
-                  const selectedCount = getSelectedCount(group.id);
-                  const isGroupSelected =
-                    selectedCount === group.subcategories.length &&
-                    selectedCount > 0;
-                  const isHovered = hoveredGroup === group.id;
-
-                  return (
-                    <div
-                      key={group.id}
-                      className="relative"
-                      ref={isHovered ? hoveredGroupRef : null}
-                    >
-                      <button
-                        onMouseEnter={() => {
-                          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                          if (hoverEnterTimeoutRef.current) clearTimeout(hoverEnterTimeoutRef.current);
-                          hoverEnterTimeoutRef.current = setTimeout(() => {
-                            setHoveredGroup(group.id);
-                          }, 120);
-                        }}
-                        onMouseLeave={() => {
-                          if (hoverEnterTimeoutRef.current) clearTimeout(hoverEnterTimeoutRef.current);
-                          hoverTimeoutRef.current = setTimeout(() => {
-                            setHoveredGroup(null);
-                          }, 800);
-                        }}
-                        onClick={() => handleSelectAllInGroup(group.id)}
-                        className={`w-full text-left p-1.5 rounded-lg border transition-all overflow-hidden group relative ${
-                          isGroupSelected
-                            ? 'border-iakoa-blue bg-blue-50 shadow-md'
-                            : 'border-gray-200 hover:shadow-md'
-                        }`}
-                        style={{
-                          backgroundImage: isGroupSelected
-                            ? 'none'
-                            : `url(${group.image})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                          minHeight: '42px',
-                        }}
-                      >
-                        {!isGroupSelected && (
-                          <div className="absolute inset-0 bg-black/25 group-hover:bg-black/60 transition-all" />
-                        )}
-                        <div className="relative z-10 flex items-center justify-between">
-                          <span
-                            className={`font-bold text-base drop-shadow-md block ${
-                              isGroupSelected ? 'text-iakoa-blue' : 'text-white'
-                            }`}
-                          >
-                            {group.label}
-                          </span>
-                          {selectedCount > 0 && (
-                            <span
-                              className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                                isGroupSelected
-                                  ? 'bg-iakoa-blue text-white'
-                                  : 'bg-iakoa-blue text-white'
-                              }`}
-                            >
-                              {selectedCount}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    </div>
-                  );
-                })}
-                {/* Filtre par date */}
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-gray-700">Date</span>
-                  {/* Raccourcis rapides */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { const d = getTodayDates(); setDateFrom(d.from); setDateTo(d.to); setActiveDatePreset('today'); }}
-                      className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${activeDatePreset === 'today' ? 'bg-iakoa-blue text-white border-iakoa-blue' : 'border-gray-200 text-gray-600 hover:border-iakoa-blue hover:text-iakoa-blue'}`}
-                    >
-                      Aujourd'hui
-                    </button>
-                    <button
-                      onClick={() => { const d = getThisWeekDates(); setDateFrom(d.from); setDateTo(d.to); setActiveDatePreset('week'); }}
-                      className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${activeDatePreset === 'week' ? 'bg-iakoa-blue text-white border-iakoa-blue' : 'border-gray-200 text-gray-600 hover:border-iakoa-blue hover:text-iakoa-blue'}`}
-                    >
-                      Cette semaine
-                    </button>
-                    <button
-                      onClick={() => { const d = getWeekendDates(); setDateFrom(d.from); setDateTo(d.to); setActiveDatePreset('weekend'); }}
-                      className={`flex-1 text-xs px-2 py-1.5 rounded-lg border transition-colors ${activeDatePreset === 'weekend' ? 'bg-iakoa-blue text-white border-iakoa-blue' : 'border-gray-200 text-gray-600 hover:border-iakoa-blue hover:text-iakoa-blue'}`}
-                    >
-                      Ce week-end
-                    </button>
-                  </div>
-                  {/* Champs manuels */}
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-sm text-gray-500">Du</label>
-                      <input
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => { setDateFrom(e.target.value); setActiveDatePreset(null); }}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-sm font-bold text-gray-500">Au</label>
-                      <input
-                        type="date"
-                        value={dateTo}
-                        onChange={(e) => { setDateTo(e.target.value); setActiveDatePreset(null); }}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue"
-                      />
-                    </div>
-                  </div>
-                </div>
-                {/* Filtre par prix */}
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-gray-700">Prix</span>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      placeholder="Max €"
-                      min="0"
-                      step="0.01"
-                      value={priceMax}
-                      onChange={(e) => setPriceMax(e.target.value)}
-                      disabled={isFree}
-                      className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-iakoa-blue disabled:opacity-40 disabled:bg-gray-50"
-                    />
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isFree}
-                        onChange={(e) => setIsFree(e.target.checked)}
-                        className="w-4 h-4 rounded border-gray-300 text-iakoa-blue focus:ring-iakoa-blue"
-                      />
-                      <span className="text-sm text-gray-400">Gratuit uniquement</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Colonne 3: Sous-catégories au hover et résumé des filtres */}
-            <div
-              className="flex-1 overflow-y-auto py-4 relative"
-              onMouseEnter={() => {
-                if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-              }}
-              onMouseLeave={() => {
-                hoverTimeoutRef.current = setTimeout(() => {
-                  setHoveredGroup(null);
-                }, 300);
-              }}
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {hoveredGroup ? 'Sélection' : 'Filtres sélectionnés'}
-              </h3>
-
-              <div className="transition-all duration-300">
-                {hoveredGroup ? (
-                  <div
-                    className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 sticky top-6 animate-in fade-in transition-all duration-300"
-                    onMouseEnter={() => {
-                      if (hoverTimeoutRef.current) {
-                        clearTimeout(hoverTimeoutRef.current);
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      hoverTimeoutRef.current = setTimeout(() => {
-                        setHoveredGroup(null);
-                      }, 1000);
-                    }}
-                  >
-                    <h4 className="font-semibold text-gray-900 mb-4">
-                      {
-                        FILTER_CATEGORY_GROUPS.find(
-                          (g) => g.id === hoveredGroup,
-                        )?.label
-                      }
-                    </h4>
-                    <button
-                      onClick={() => handleSelectAllInGroup(hoveredGroup)}
-                      className="w-full text-left mb-1 text-sm text-iakoa-blue hover:text-blue-700 font-medium"
-                    >
-                      {FILTER_CATEGORY_GROUPS.find((g) => g.id === hoveredGroup)?.subcategories.every((sub) => selectedCategories.includes(sub.id))
-                        ? 'Supprimer tout'
-                        : 'Sélectionner tout'}
-                    </button>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {FILTER_CATEGORY_GROUPS.find(
-                        (g) => g.id === hoveredGroup,
-                      )?.subcategories.map((subcategory) => {
-                        const isSelected = selectedCategories.includes(
-                          subcategory.id,
-                        );
-                        const IconComponent = SUBCATEGORY_ICONS[subcategory.id];
-                        return (
-                          <button
-                            key={subcategory.id}
-                            onClick={() => handleCategoryToggle(subcategory.id)}
-                            className={`w-full flex items-center gap-3 p-2 rounded cursor-pointer transition-all ${
-                              isSelected
-                                ? 'bg-blue-50 border border-iakoa-blue'
-                                : 'hover:bg-gray-100 border border-transparent'
-                            }`}
-                          >
-                            <div
-                              className={`w-5 h-5 flex items-center justify-center shrink-0 transition-all ${
-                                isSelected ? 'text-iakoa-blue' : 'text-gray-400'
-                              }`}
-                            >
-                              {IconComponent ? (
-                                <IconComponent className="w-5 h-5" />
-                              ) : (
-                                <Check className="w-5 h-5" />
-                              )}
-                            </div>
-                            <span
-                              className={`text-sm ${
-                                isSelected
-                                  ? 'text-gray-900 font-medium'
-                                  : 'text-gray-700'
-                              }`}
-                            >
-                              {subcategory.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (selectedCategories.length > 0 || city || dateFrom || dateTo || priceMin || priceMax || isFree) ? (
-                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 animate-in fade-in">
-                    <div className="space-y-3">
-                      {/* Localisation */}
-                      {(city || radius !== 2) && (
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-400 uppercase">Localisation</p>
-                          <div className="flex flex-wrap gap-1">
-                            {city && (
-                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                {city}
-                              </span>
-                            )}
-                            <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                              {radius} km
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      {/* Date */}
-                      {(dateFrom || dateTo) && (
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-400 uppercase">Date</p>
-                          <div className="flex flex-wrap gap-1">
-                            {activeDatePreset ? (
-                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                {activeDatePreset === 'today' && "Aujourd'hui"}
-                                {activeDatePreset === 'week' && 'Cette semaine'}
-                                {activeDatePreset === 'weekend' && 'Ce week-end'}
-                              </span>
-                            ) : (
-                              <>
-                                {dateFrom && (
-                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                    Du {dateFrom}
-                                  </span>
-                                )}
-                                {dateTo && (
-                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                    Au {dateTo}
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      {/* Prix */}
-                      {(isFree || priceMin || priceMax) && (
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold text-gray-400 uppercase">Prix</p>
-                          <div className="flex flex-wrap gap-1">
-                            {isFree ? (
-                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                Gratuit
-                              </span>
-                            ) : (
-                              <>
-                                {priceMin && (
-                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                    Min {priceMin}€
-                                  </span>
-                                )}
-                                {priceMax && (
-                                  <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                                    Max {priceMax}€
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      {/* Catégories - 2 colonnes */}
-                      {FILTER_CATEGORY_GROUPS.map((group) => {
-                        const groupSelected = group.subcategories.filter(
-                          (sub) => selectedCategories.includes(sub.id),
-                        );
-                        if (groupSelected.length === 0) return null;
-                        const groupHex = getCategoryHexColor(group.subcategories[0]?.id);
-
-                        return (
-                          <div key={group.id} className="space-y-1">
-                            <p className="text-xs font-semibold uppercase" style={{ color: groupHex }}>
-                              {group.label}
-                            </p>
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                              {groupSelected.map((sub) => (
-                                <div
-                                  key={sub.id}
-                                  className="flex items-center gap-1.5 text-xs text-gray-700 min-w-0"
-                                >
-                                  <div
-                                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: getCategoryHexColor(sub.id) }}
-                                  />
-                                  <span className="truncate">{sub.label}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 text-center text-gray-500 sticky top-6 animate-in fade-in">
-                    <p className="text-sm">
-                      Survolez une catégorie pour voir ses options
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* Colonne 3: sous-catégories au hover / résumé */}
+              <SelectionPanel
+                hoveredGroup={hoveredGroup}
+                selectedCategories={selectedCategories}
+                city={city}
+                radius={radius}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                activeDatePreset={activeDatePreset}
+                priceMin={priceMin}
+                priceMax={priceMax}
+                isFree={isFree}
+                onCategoryToggle={handleCategoryToggle}
+                onSelectAllInGroup={handleSelectAllInGroup}
+                onPanelMouseEnter={clearHoverTimeouts}
+                onPanelMouseLeave={() => scheduleHoverEnd(300)}
+                onCardMouseEnter={clearHoverTimeouts}
+                onCardMouseLeave={() => scheduleHoverEnd(1000)}
+              />
             </div>
           </div>
+        </div>
 
-        </div>
-        </div>
         {/* Boutons d'action - fixés en bas */}
         <div className="shrink-0 border-t border-gray-200 bg-white">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4">

@@ -15,95 +15,39 @@ enum Role {
   ADMIN
 }
 
-enum EventCategory {
-  CONCERT
-  CINEMA
-  THEATRE
-  SPECTACLE
-  FANFARE
-  DANSE
-  COURSDEDANSE
-  ART
-  PEINTURE
-  PHOTOGRAPHIE
-  EXPOSITION
-  MUSEE
-  LANCEMENTDELIVRE
-  ENFANTS
-  JEUX
-  JEUXVIDEO
-  SOIREEJEUX
-  LECTURE
-  REPAS
-  DEJEUNER
-  COURSDECUISINE
-  DEGUSTATION
-  SOIREE
-  BAR
-  FESTIVAL
-  FETELOCALE
-  FERIA
-  NATURE
-  RANDONNEE
-  TRAIL
-  OUTDOOR
-  MARCHE
-  NEIGE
-  NAUTISME
-  AVENTURE
-  YOGA
-  MEDITATION
-  BIENETRE
-  DEVELOPPEMENTPERSONNEL
-  CONFERENCE
-  FORMATION
-  LANGUES
-  SALONPROFESSIONNEL
-  SCIENCE
-  DECOUVERTE
-  PATRIMOINE
-  VISITE
-  ATELIER
-  BRICOLAGE
-  MODE
-  ANIMAUX
-  JARDINAGE
-  FERME
-  BENEVOLAT
-  ECOLOGIE
-  SOLIDARITE
-  RENCONTRE
-  EVENEMENTCARITATIF
-  ESPORT
-  TECHNOLOGIE
-  MANGA
-  COSPLAY
-  TOURNOIJEUXVIDEO
-  BROCANTE
-  VIDEGRENIER
-  ENCHERES
-  SPORT
-  COMPETITION
-  RENCONTRESPORTIVE
-  JOURNEE
+enum VerificationTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
 }
+
+// Cycle de vie d'un événement (modération)
+enum EventStatus {
+  DRAFT // brouillon de l'organisateur
+  PENDING // soumis, en attente de modération
+  PUBLISHED // visible publiquement
+  REJECTED // refusé (motif dans moderationNote)
+  CANCELLED // annulé après publication
+}
+
 
 model User {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  name          String           @db.VarChar(30)
-  password      String?          // Optionnel pour les utilisateurs OAuth
-  email         String           @unique
-  avatar        String?          // Photo de profil (fournie par OAuth)
-  provider      String           @default("local") // "local", "google", "facebook"
-  providerId    String?          // ID unique chez le provider OAuth
-  role          Role             @default(USER)
-  isCreator     Boolean          @default(false)
-  companies     Company[]
-  userFavorites UserFavorite[]
-  sessions      RefreshSession[]
+  name            String              @db.VarChar(30)
+  password        String?             // Optionnel pour les utilisateurs OAuth
+  email           String              @unique
+  emailVerifiedAt DateTime?           @db.Timestamptz(3)
+  avatar          String?             // Photo de profil (fournie par OAuth)
+  provider        String              @default("local") // "local", "google", "facebook"
+  providerId      String?             // ID unique chez le provider OAuth
+  role            Role                @default(USER)
+  isCreator       Boolean             @default(false)
+  companies       Company[]
+  userFavorites   UserFavorite[]
+  sessions        RefreshSession[]
+  verifTokens     VerificationToken[]
 
   @@unique([provider, providerId])
   @@index([email])
@@ -133,6 +77,23 @@ model RefreshSession {
   @@map("refresh_sessions")
 }
 
+// Token à usage unique (vérification d'email, réinitialisation de mot de passe).
+// Seul le hash SHA-256 est stocké ; le token en clair ne transite que dans l'email.
+model VerificationToken {
+  id        String                @id @default(uuid()) @db.Uuid
+  createdAt DateTime              @default(now()) @db.Timestamptz(3)
+
+  tokenHash String                @unique
+  type      VerificationTokenType
+  expiresAt DateTime              @db.Timestamptz(3)
+  usedAt    DateTime?             @db.Timestamptz(3)
+  userId    String                @db.Uuid
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@map("verification_tokens")
+}
+
 model Company {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz(3)
@@ -154,26 +115,85 @@ model Company {
   @@map("companies")
 }
 
+// Groupe de catégories affiché dans les filtres (ex: "Gastronomie")
+model CategoryGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  slug       String     @unique @db.VarChar(50)
+  label      String     @db.VarChar(100)
+  position   Int        @default(0)
+  categories Category[]
+
+  @@map("category_groups")
+}
+
+// Catégorie d'événement, gérable depuis le back-office.
+// Le slug reprend les anciennes valeurs de l'enum EventCategory :
+// le contrat d'API frontend (categories: string[]) est inchangé.
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  slug     String         @unique @db.VarChar(50)
+  label    String         @db.VarChar(100)
+  color    String?        @db.VarChar(7) // hex, ex: #E11D48
+  isActive Boolean        @default(true)
+  groupId  String?        @db.Uuid
+  group    CategoryGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  events   Event[]
+
+  @@index([groupId])
+  @@map("categories")
+}
+
+// Lieu réutilisable (salle, parc, bar…), rattachable aux événements
+model Place {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  name       String  @db.VarChar(150)
+  address    String? @db.VarChar(255)
+  city       String? @db.VarChar(100)
+  postalCode String? @db.VarChar(20)
+  country    String? @db.VarChar(100)
+  latitude   Float
+  longitude  Float
+  events     Event[]
+
+  @@index([city])
+  @@map("places")
+}
+
 model Event {
   id        String   @id @default(uuid()) @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  name          String          @db.VarChar(100)
-  date          DateTime        @db.Timestamptz(3)
-  description   String          @db.VarChar(5000)
-  pricing       Int             @default(0)
-  location      Json            @db.JsonB
-  companyId     String          @db.Uuid
-  website       String?
-  categories    EventCategory[]
-  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  media         Media[]
-  userFavorites UserFavorite[]
+  name           String         @db.VarChar(100)
+  date           DateTime       @db.Timestamptz(3)
+  description    String         @db.VarChar(5000)
+  pricing        Int            @default(0)
+  location       Json           @db.JsonB
+  status         EventStatus    @default(PENDING)
+  moderationNote String?        @db.VarChar(500) // motif de refus/annulation
+  companyId      String         @db.Uuid
+  website        String?
+  placeId        String?        @db.Uuid
+  place          Place?         @relation(fields: [placeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  categories     Category[]
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  media          Media[]
+  userFavorites  UserFavorite[]
 
   @@index([companyId])
   @@index([date])
   @@index([pricing])
+  @@index([status])
+  @@index([placeId])
   @@map("events")
 }
 

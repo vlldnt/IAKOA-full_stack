@@ -10,6 +10,7 @@ import {
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
+import { ValidateCompanyDto } from './dto/validate-company.dto';
 import { CompanyResponseDto } from './dto/company-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -60,6 +61,21 @@ export class CompaniesController {
   @ApiResponse({ status: 403, description: 'Accès refusé - réservé aux administrateurs' })
   findAll() {
     return this.companiesService.findAll();
+  }
+
+  @Patch(':id/validate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Valider ou invalider une entreprise (admin)',
+    description: 'Bascule le statut isValidated. Réservé aux administrateurs.',
+  })
+  @ApiResponse({ status: 200, description: 'Statut de validation mis à jour' })
+  @ApiResponse({ status: 403, description: 'Réservé aux administrateurs' })
+  @ApiResponse({ status: 404, description: 'Entreprise non trouvée' })
+  setValidation(@Param('id') id: string, @Body() body: ValidateCompanyDto) {
+    return this.companiesService.setValidation(id, body.isValidated);
   }
 
   @Get('my-companies')

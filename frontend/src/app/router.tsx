@@ -3,6 +3,8 @@ import { Layout } from './app';
 import EventsPage from '@/features/events_page/EventsPage';
 import MapPage from '@/features/map_page/MapPage';
 import { OAuthCallback } from '@/features/auth/components/OAuthCallback';
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage';
+import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage';
 
 export function AppRouter() {
   return (
@@ -14,8 +16,10 @@ export function AppRouter() {
         <Route path="/create" element={<EventsPage text="Créer votre évènement." />} />
         <Route path="/favorites" element={<EventsPage text="Vos favoris ici, que faire ce soir ?" />} />
       </Route>
-      {/* Route OAuth callback sans le Layout (page standalone) */}
+      {/* Routes standalone (sans le Layout) */}
       <Route path="/auth/callback" element={<OAuthCallback />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
     </Routes>
   );
 }

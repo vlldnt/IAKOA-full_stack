@@ -1,0 +1,40 @@
+# Infrastructure locale Iakoa
+#
+#   docker compose up -d db-test    → Postgres de test (port 5433, données jetables)
+#   docker compose --profile dev up -d db
+#                                   → Postgres de dev (port 5432) si vous n'avez
+#                                     pas déjà un Postgres local
+services:
+  db-test:
+    image: postgres:16-alpine
+    container_name: iakoa-db-test
+    environment:
+      POSTGRES_USER: iakoa_test
+      POSTGRES_PASSWORD: iakoa_test
+      POSTGRES_DB: iakoa-tests
+    ports:
+      - '5433:5432'
+    # Données en mémoire : base jetable et rapide, réinitialisée à chaque démarrage
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U iakoa_test -d iakoa-tests']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  db:
+    image: postgres:16-alpine
+    container_name: iakoa-db
+    profiles: ['dev']
+    environment:
+      POSTGRES_USER: iakoa_dev
+      POSTGRES_PASSWORD: iakoa_dev
+      POSTGRES_DB: iakoa-backend
+    ports:
+      - '5432:5432'
+    volumes:
+      - iakoa-pgdata:/var/lib/postgresql/data
+
+volumes:
+  iakoa-pgdata:

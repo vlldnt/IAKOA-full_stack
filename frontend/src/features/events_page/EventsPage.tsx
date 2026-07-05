@@ -1,7 +1,7 @@
 import { EventCard } from './components/EventCard';
 import { EventModal } from './components/EventModal';
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { useEvents } from './EventContext';
+import { useRef, useEffect, useMemo, useState } from 'react';
+import { useInfiniteEvents } from './hooks';
 import { useFilters } from './FilterContext';
 import type { EventType } from '@/lib/types/EventType';
 
@@ -10,17 +10,51 @@ interface EventsPageProps {
   showCards?: boolean;
 }
 
-// Page d'accueil affichant les événements
-// Adapte le contenu selon l'état de connexion
+// Page d'accueil affichant les événements (infinite scroll via TanStack Query)
 function EventsPage({ text, showCards = true }: EventsPageProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const { events = [], isLoading = false, error = null, fetchMoreEvents, prefetchNextPage, totalPages = 1, fetchFilteredEvents } = useEvents();
   const { filters, updatePosition } = useFilters();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
-  const itemsPerPage = 12;
+
+  // Sans filtre utilisateur actif : événements récents, sans restriction de
+  // distance (la géolocalisation en arrière-plan ne déclenche pas de filtre).
+  const hasUserFilter = Boolean(
+    filters.keyword ||
+      filters.city ||
+      filters.selectedCategories.length > 0 ||
+      filters.dateFrom ||
+      filters.dateTo ||
+      filters.priceMin !== undefined ||
+      filters.priceMax !== undefined ||
+      filters.isFree,
+  );
+
+  const filterParams = useMemo(
+    () =>
+      hasUserFilter
+        ? {
+            keyword: filters.keyword || undefined,
+            city: filters.city || undefined,
+            latitude: filters.latitude,
+            longitude: filters.longitude,
+            radius: filters.radius,
+            categories:
+              filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
+            dateFrom: filters.dateFrom,
+            dateTo: filters.dateTo,
+            priceMin: filters.priceMin,
+            priceMax: filters.priceMax,
+            isFree: filters.isFree || undefined,
+          }
+        : undefined,
+    [hasUserFilter, filters],
+  );
+
+  const { data, error, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useInfiniteEvents(filterParams);
+
+  const events = useMemo(() => data?.pages.flatMap(page => page.data) ?? [], [data]);
 
   useEffect(() => {
     const calculateMargin = () => {
@@ -39,108 +73,53 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
     return () => window.removeEventListener('resize', calculateMargin);
   }, []);
 
-  // Initialiser la position de l'utilisateur en arrière-plan (sans déclencher de fetch)
+  // Initialiser la position de l'utilisateur en arrière-plan
   useEffect(() => {
     if (!filters.latitude && !filters.longitude && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        position => {
           updatePosition(position.coords.latitude, position.coords.longitude);
         },
         () => {
           updatePosition(44.3497, 2.5737);
-        }
+        },
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Chargement initial: événements récents sans filtre
-  useEffect(() => {
-    if (!hasAppliedFilters) {
-      fetchFilteredEvents(1, itemsPerPage).then(() => {
-        prefetchNextPage(2, itemsPerPage);
-      });
-    }
-  }, []);
-
-  // Quand les filtres changent (action utilisateur), fetcher avec filtres
-  const buildFilterParams = useCallback(() => ({
-    keyword: filters.keyword || undefined,
-    city: filters.city || undefined,
-    latitude: filters.latitude,
-    longitude: filters.longitude,
-    radius: filters.radius,
-    categories: filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
-    dateFrom: filters.dateFrom,
-    dateTo: filters.dateTo,
-    priceMin: filters.priceMin,
-    priceMax: filters.priceMax,
-    isFree: filters.isFree || undefined,
-  }), [filters]);
-
-  // Détecter les changements de filtres (après le premier rendu)
-  useEffect(() => {
-    const hasAnyFilter = filters.keyword || filters.city || filters.selectedCategories.length > 0
-      || filters.dateFrom || filters.dateTo || filters.priceMin !== undefined
-      || filters.priceMax !== undefined || filters.isFree;
-
-    if (hasAnyFilter || hasAppliedFilters) {
-      setHasAppliedFilters(true);
-      setCurrentPage(1);
-      fetchFilteredEvents(1, itemsPerPage, buildFilterParams()).then(() => {
-        prefetchNextPage(2, itemsPerPage);
-      });
-    }
-  }, [filters.keyword, filters.city, filters.latitude, filters.longitude, filters.radius, filters.selectedCategories, filters.dateFrom, filters.dateTo, filters.priceMin, filters.priceMax, filters.isFree]);
 
   // Infinite scroll avec Intersection Observer
   useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !isLoading &&
-          currentPage < totalPages
-        ) {
-          // Charger la prochaine page
-          setCurrentPage((prev) => prev + 1);
+      entries => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
-    if (sentinelRef.current) {
-      observer.observe(sentinelRef.current);
-    }
-
-    return () => {
-      if (sentinelRef.current) {
-        observer.unobserve(sentinelRef.current);
-      }
-    };
-  }, [isLoading, currentPage, totalPages]);
-
-  // Quand la page change, charger plus d'événements et prefetch la suivante
-  useEffect(() => {
-    if (currentPage > 1 && fetchMoreEvents) {
-      fetchMoreEvents(currentPage, itemsPerPage).then(() => {
-        // Prefetch la page suivante après le chargement
-        prefetchNextPage(currentPage + 1, itemsPerPage);
-      });
-    }
-  }, [currentPage]);
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, events.length]);
 
   return (
     <div className="w-full min-h-screen bg-white pt-30 md:pt-4 pb-8 md:pb-8 relative">
       {selectedEvent && (
         <EventModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />
       )}
-      <div ref={contentRef} className="w-full lg:w-[95%] xl:w-[90%] [@media(min-width:1828px)]:w-[80%] mx-auto">
+      <div
+        ref={contentRef}
+        className="w-full lg:w-[95%] xl:w-[90%] [@media(min-width:1828px)]:w-[80%] mx-auto"
+      >
         {showCards ? (
           <div className="w-full">
-
             {error && (
               <div className="alert alert-error max-w-md mx-auto">
-                <span>{error}</span>
+                <span>{error.message}</span>
               </div>
             )}
 
@@ -154,22 +133,25 @@ function EventsPage({ text, showCards = true }: EventsPageProps) {
                              [@media(min-width:1828px)]:grid-cols-4
                              place-items-center"
                 >
-                  {events.map((event) => (
+                  {events.map(event => (
                     <EventCard key={event.id} event={event} onClick={setSelectedEvent} />
                   ))}
                 </div>
 
                 {/* Sentinel pour infinite scroll */}
-                {currentPage < totalPages && (
-                  <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-8 pb-20 lg:pb-8">
-                    {isLoading && (
+                {hasNextPage && (
+                  <div
+                    ref={sentinelRef}
+                    className="h-20 flex items-center justify-center mt-8 pb-20 lg:pb-8"
+                  >
+                    {isFetchingNextPage && (
                       <span className="loading loading-spinner loading-lg"></span>
                     )}
                   </div>
                 )}
 
                 {/* Message fin de liste */}
-                {currentPage === totalPages && events.length > 0 && (
+                {!hasNextPage && (
                   <div className="text-center py-8 pb-20 lg:pb-8 text-gray-500">
                     ✓ Plus d'événements à charger
                   </div>

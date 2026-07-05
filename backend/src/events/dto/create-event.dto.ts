@@ -11,13 +11,12 @@ import {
   IsUrl,
   IsArray,
   ValidateNested,
-  IsEnum,
   IsDefined,
+  Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { CreateMediaDto } from '../../media/dto/create-media.dto';
-import { EventCategory } from '@prisma/client';
 
 export class CoordinatesDto {
   @ApiProperty({ description: 'Latitude', example: 48.8566, minimum: -90, maximum: 90 })
@@ -127,19 +126,19 @@ export class CreateEventDto {
   website?: string;
 
   @ApiProperty({
-    description: "Catégories de l'événement",
+    description: "Slugs des catégories de l'événement (voir GET /categories)",
     required: false,
-    enum: EventCategory,
     isArray: true,
+    type: String,
     example: ['CONCERT', 'BAR', 'SOIREE'],
   })
   @IsOptional()
   @IsArray({ message: 'Les catégories doivent être un tableau.' })
-  @IsEnum(EventCategory, {
+  @Matches(/^[A-Z0-9_]{2,50}$/, {
     each: true,
-    message: 'Chaque catégorie doit être une valeur valide de EventCategory.',
+    message: 'Chaque catégorie doit être un slug en majuscules (A-Z, 0-9, _).',
   })
-  categories?: EventCategory[];
+  categories?: string[];
 
   @ApiProperty({
     description: "Liste des médias associés à l'événement",

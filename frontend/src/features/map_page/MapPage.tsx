@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Plus, Minus, LocateFixed } from 'lucide-react';
 import { useFilters } from '@/features/events_page/FilterContext';
-import { fetchEventsPaginated } from '@/lib/services/eventsServices';
+import { useEventsForMap } from '@/features/events_page/hooks';
 import type { EventType } from '@/lib/types/EventType';
 import { getCategoryHexColor } from '@/lib/constants/filter-categories';
 import { EventModal } from '@/features/events_page/components/EventModal';
@@ -86,9 +86,7 @@ const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 export default function MapPage() {
   const { filters, updatePosition, updateRadius } = useFilters();
   const device = useDeviceType();
-  const [events, setEvents] = useState<EventType[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(80);
   const [geolocating, setGeolocating] = useState(
     !filters.latitude || !filters.longitude,
@@ -131,54 +129,38 @@ export default function MapPage() {
     }
   }, []);
 
-  // Fetch events whenever filters change
-  const loadEvents = useCallback(async () => {
-    if (!filters.latitude || !filters.longitude) return;
-    setIsLoading(true);
-    try {
-      const result = await fetchEventsPaginated(1, 500, {
-        keyword: filters.keyword || undefined,
-        city: filters.city || undefined,
-        latitude: filters.latitude,
-        longitude: filters.longitude,
-        radius: filters.radius,
-        categories:
-          filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-        priceMin: filters.priceMin,
-        priceMax: filters.priceMax,
-        isFree: filters.isFree || undefined,
-      });
-      setEvents(
-        result.data.filter(
-          (e) =>
-            e.location?.coordinates?.lat != null &&
-            e.location?.coordinates?.lng != null,
-        ),
-      );
-    } catch {
-      // silent — map stays with stale data
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    filters.keyword,
-    filters.city,
-    filters.latitude,
-    filters.longitude,
-    filters.radius,
-    filters.selectedCategories,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.priceMin,
-    filters.priceMax,
-    filters.isFree,
-  ]);
+  // Événements de la carte via TanStack Query (cache partagé, refetch auto
+  // quand les filtres changent)
+  const mapFilters = useMemo(
+    () => ({
+      keyword: filters.keyword || undefined,
+      city: filters.city || undefined,
+      latitude: filters.latitude,
+      longitude: filters.longitude,
+      radius: filters.radius,
+      categories:
+        filters.selectedCategories.length > 0 ? filters.selectedCategories : undefined,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      priceMin: filters.priceMin,
+      priceMax: filters.priceMax,
+      isFree: filters.isFree || undefined,
+    }),
+    [filters],
+  );
 
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+  const { data: mapData, isLoading } = useEventsForMap(
+    mapFilters,
+    Boolean(filters.latitude && filters.longitude),
+  );
+
+  const events = useMemo(
+    () =>
+      (mapData?.data ?? []).filter(
+        e => e.location?.coordinates?.lat != null && e.location?.coordinates?.lng != null,
+      ),
+    [mapData],
+  );
 
   // Shared wrapper for loading / empty states
   const emptyContainer = (children: ReactNode) => (

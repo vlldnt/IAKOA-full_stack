@@ -1,6 +1,6 @@
 // Réponse API évènement: format de sortie
 import { ApiProperty } from '@nestjs/swagger';
-import { Event, EventCategory } from '@prisma/client';
+import { Event, EventStatus } from '@prisma/client';
 import { MediaResponseDto } from '../../media/dto/media-response.dto';
 
 export class EventResponseDto {
@@ -90,12 +90,26 @@ export class EventResponseDto {
   website: string | null;
 
   @ApiProperty({
-    description: "Catégories de l'évènement",
-    enum: EventCategory,
+    description: "Slugs des catégories de l'évènement",
     isArray: true,
+    type: String,
     example: ['CONCERT', 'BAR', 'SOIREE'],
   })
-  categories: EventCategory[];
+  categories: string[];
+
+  @ApiProperty({
+    description: "Statut de modération de l'évènement",
+    enum: EventStatus,
+    example: EventStatus.PUBLISHED,
+  })
+  status: EventStatus;
+
+  @ApiProperty({
+    description: 'Motif de refus ou d’annulation',
+    required: false,
+    nullable: true,
+  })
+  moderationNote: string | null;
 
   @ApiProperty({
     description: "Liste des médias associés à l'évènement",
@@ -113,7 +127,7 @@ export class EventResponseDto {
   })
   media: MediaResponseDto[];
 
-  constructor(event: Event & { media?: any[]; company?: any }) {
+  constructor(event: Event & { media?: any[]; company?: any; categories?: { slug: string }[] }) {
     this.id = event.id;
     this.createdAt = event.createdAt;
     this.updatedAt = event.updatedAt;
@@ -124,7 +138,10 @@ export class EventResponseDto {
     this.location = event.location as Record<string, any>;
     this.companyId = event.companyId;
     this.website = event.website;
-    this.categories = event.categories;
+    // Le contrat d'API reste un tableau de slugs (comme l'ancien enum)
+    this.categories = (event.categories ?? []).map(category => category.slug);
+    this.status = event.status;
+    this.moderationNote = event.moderationNote;
     this.media = event.media ? event.media.map(m => new MediaResponseDto(m)) : [];
     this.company = event.company
       ? {

@@ -22,6 +22,7 @@ import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { FacebookOAuthGuard } from './guards/facebook-oauth.guard';
 import { GetUser } from './decorators/get-user.decorator';
 import { UserResponseDto } from '../users/dto/user-response.dto';
+import { ForgotPasswordDto, ResetPasswordDto, VerifyEmailDto } from './dto/password-reset.dto';
 import { setAuthCookies, clearAuthCookies } from './cookies';
 
 type AuthenticatedUser = UserResponseDto & { sessionId?: string };
@@ -131,6 +132,78 @@ export class AuthController {
     const result = await this.authService.logout(user.sessionId);
     clearAuthCookies(res);
     return result;
+  }
+
+  /**
+   * POST /auth/forgot-password - Demander un lien de réinitialisation
+   */
+  @Post('forgot-password')
+  @Throttle(STRICT_RATE_LIMIT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Demander la réinitialisation du mot de passe',
+    description:
+      "Envoie un lien de réinitialisation par email si un compte existe. La réponse est identique que l'email existe ou non.",
+  })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({ status: 200, description: 'Demande enregistrée' })
+  @ApiResponse({ status: 429, description: 'Trop de tentatives' })
+  forgotPassword(@Body(ValidationPipe) dto: ForgotPasswordDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  /**
+   * POST /auth/reset-password - Réinitialiser le mot de passe
+   */
+  @Post('reset-password')
+  @Throttle(STRICT_RATE_LIMIT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Réinitialiser le mot de passe',
+    description:
+      'Consomme le token reçu par email, change le mot de passe et révoque toutes les sessions actives.',
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({ status: 200, description: 'Mot de passe réinitialisé' })
+  @ApiResponse({ status: 400, description: 'Lien invalide ou expiré' })
+  @ApiResponse({ status: 429, description: 'Trop de tentatives' })
+  resetPassword(@Body(ValidationPipe) dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.password);
+  }
+
+  /**
+   * POST /auth/verify-email - Confirmer l'adresse email
+   */
+  @Post('verify-email')
+  @Throttle(STRICT_RATE_LIMIT)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Confirmer l'adresse email",
+    description: "Consomme le token de vérification reçu par email à l'inscription.",
+  })
+  @ApiBody({ type: VerifyEmailDto })
+  @ApiResponse({ status: 200, description: 'Email vérifié' })
+  @ApiResponse({ status: 400, description: 'Lien invalide ou expiré' })
+  verifyEmail(@Body(ValidationPipe) dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.token);
+  }
+
+  /**
+   * POST /auth/resend-verification - Renvoyer l'email de vérification
+   */
+  @Post('resend-verification')
+  @Throttle(STRICT_RATE_LIMIT)
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: "Renvoyer l'email de vérification",
+    description: "Renvoie l'email de confirmation à l'utilisateur connecté.",
+  })
+  @ApiResponse({ status: 200, description: 'Email envoyé' })
+  @ApiResponse({ status: 401, description: 'Non authentifié' })
+  resendVerification(@GetUser() user: AuthenticatedUser) {
+    return this.authService.sendEmailVerification(user.id);
   }
 
   /**

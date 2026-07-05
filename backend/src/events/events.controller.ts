@@ -19,12 +19,16 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
+import { EventStatus, Role } from '@prisma/client';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventResponseDto } from './dto/event-response.dto';
 import { FilterEventsDto } from './dto/filter-events.dto';
+import { ModerateEventDto } from './dto/moderate-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 
@@ -98,6 +102,44 @@ export class EventsController {
   @ApiResponse({ status: 401, description: 'Non authentifié' })
   findAllByOwner(@GetUser() user: UserResponseDto) {
     return this.eventsService.findAllByOwner(user.id);
+  }
+
+  /**
+   * GET /events/moderation - File de modération (admin)
+   */
+  @Get('moderation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'File de modération (admin)',
+    description: 'Retourne les événements du statut demandé (PENDING par défaut).',
+  })
+  @ApiResponse({ status: 200, description: 'Événements à modérer', type: [EventResponseDto] })
+  @ApiResponse({ status: 403, description: 'Réservé aux administrateurs' })
+  findModerationQueue(@Query('status') status?: EventStatus) {
+    return this.eventsService.findByStatus(status ?? EventStatus.PENDING);
+  }
+
+  /**
+   * PATCH /events/:id/moderate - Modérer un événement (admin)
+   */
+  @Patch(':id/moderate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Modérer un événement (admin)',
+    description:
+      'Change le statut (publier, refuser avec motif, annuler…). Réservé aux administrateurs.',
+  })
+  @ApiBody({ type: ModerateEventDto })
+  @ApiResponse({ status: 200, description: 'Statut mis à jour', type: EventResponseDto })
+  @ApiResponse({ status: 400, description: 'Motif manquant pour un refus' })
+  @ApiResponse({ status: 403, description: 'Réservé aux administrateurs' })
+  @ApiResponse({ status: 404, description: 'Événement non trouvé' })
+  moderate(@Param('id') id: string, @Body() dto: ModerateEventDto) {
+    return this.eventsService.moderate(id, dto.status, dto.moderationNote);
   }
 
   /**
