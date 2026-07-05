@@ -44,10 +44,12 @@ model User {
   providerId      String?             // ID unique chez le provider OAuth
   role            Role                @default(USER)
   isCreator       Boolean             @default(false)
+  notifyByEmail   Boolean             @default(true) // recevoir les notifications par email
   companies       Company[]
   userFavorites   UserFavorite[]
   sessions        RefreshSession[]
   verifTokens     VerificationToken[]
+  notifications   Notification[]
 
   @@unique([provider, providerId])
   @@index([email])
@@ -188,6 +190,7 @@ model Event {
   company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   media          Media[]
   userFavorites  UserFavorite[]
+  notifications  Notification[]
 
   @@index([companyId])
   @@index([date])
@@ -210,6 +213,32 @@ model Media {
   @@index([eventId])
   @@index([type])
   @@map("media")
+}
+
+// Notification in-app (avec relais email optionnel selon User.notifyByEmail)
+enum NotificationType {
+  EVENT_PUBLISHED // votre événement a été validé
+  EVENT_REJECTED // votre événement a été refusé (motif)
+  EVENT_UPDATED // un événement en favori a été modifié
+  EVENT_CANCELLED // un événement en favori a été annulé/supprimé
+  EVENT_REMINDER // rappel J-1 d'un événement en favori
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  type      NotificationType
+  title     String    @db.VarChar(150)
+  body      String?   @db.VarChar(500)
+  readAt    DateTime? @db.Timestamptz(3)
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  eventId   String?   @db.Uuid
+  event     Event?    @relation(fields: [eventId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([userId, readAt])
+  @@index([eventId])
+  @@map("notifications")
 }
 
 model UserFavorite {

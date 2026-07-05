@@ -92,6 +92,27 @@ export class MailService {
     });
   }
 
+  // Relais email générique d'une notification in-app
+  async sendNotification(to: string, name: string, title: string, body?: string): Promise<void> {
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0];
+    await this.send({
+      to,
+      subject: `${title} — Iakoa`,
+      html: this.wrapTemplate(`
+        <h2>${escapeHtml(title)}</h2>
+        <p>Bonjour ${escapeHtml(name)},</p>
+        ${body ? `<p>${escapeHtml(body)}</p>` : ''}
+        <p style="margin: 24px 0;">
+          <a href="${frontendUrl}" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;">
+            Ouvrir Iakoa
+          </a>
+        </p>
+        <p style="font-size:12px;color:#6b7280;">Vous pouvez désactiver les emails de notification
+        depuis votre profil.</p>
+      `),
+    });
+  }
+
   private wrapTemplate(content: string): string {
     return `<!doctype html>
 <html lang="fr">

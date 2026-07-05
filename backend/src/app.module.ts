@@ -1,5 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
@@ -14,6 +15,7 @@ import { MailModule } from './mail/mail.module';
 import { CategoriesModule } from './categories/categories.module';
 import { PlacesModule } from './places/places.module';
 import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
 
 @Module({
@@ -26,6 +28,8 @@ import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
         limit: 100,
       },
     ]),
+    // Tâches planifiées (rappels J-1 des notifications)
+    ScheduleModule.forRoot(),
     PrismaModule,
     MailModule,
     UsersModule,
@@ -37,6 +41,7 @@ import { HttpLoggerMiddleware } from './middlewares/http-logger.middleware';
     CategoriesModule,
     PlacesModule,
     AdminModule,
+    NotificationsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

@@ -9,6 +9,7 @@ import {
   Monitor,
   Trash2,
   BadgeCheck,
+  BellRing,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useToast } from '@/components/ui/toast';
@@ -231,6 +232,38 @@ function ProfilePage() {
           >
             Modifier le mot de passe
           </button>
+        </section>
+
+        {/* ── Notifications ── */}
+        <section className="p-5 rounded-2xl border border-gray-200 flex flex-col gap-3">
+          <h2 className="flex items-center gap-2 font-semibold text-gray-900">
+            <BellRing className="h-4 w-4 text-gray-400" />
+            Notifications
+          </h2>
+          <label className="flex items-center justify-between gap-3 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-gray-800">Recevoir les emails</p>
+              <p className="text-xs text-gray-400">
+                Modifications de vos favoris, rappels J-1, décisions sur vos événements. Les
+                notifications restent visibles dans l'application.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={user.notifyByEmail}
+              disabled={updateProfile.isPending}
+              onChange={e =>
+                updateProfile.mutate(
+                  { notifyByEmail: e.target.checked },
+                  {
+                    onSuccess: () => toast('success', 'Préférence enregistrée.'),
+                    onError: () => toast('error', 'La mise à jour a échoué.'),
+                  },
+                )
+              }
+              className="toggle toggle-sm checked:bg-iakoa-blue"
+            />
+          </label>
         </section>
 
         {/* ── Appareils connectés ── */}

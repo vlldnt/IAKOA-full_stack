@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Heart, CalendarPlus, CalendarDays, LogOut } from 'lucide-react';
+import { User, Heart, CalendarPlus, CalendarDays, LogOut, ShieldCheck } from 'lucide-react';
 import type { UserType } from '@/lib/types/AuthType';
 
 interface ProfileDropdownProps {
@@ -77,6 +77,16 @@ function ProfileDropdown({ user, onLogout, isMobile = false }: ProfileDropdownPr
             <CalendarPlus className="h-4 w-4" />
             Créer un événement
           </Link>
+          {user.role === 'ADMIN' && (
+            <Link
+              to="/admin"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-violet-600 hover:bg-violet-50 transition-colors"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Administration
+            </Link>
+          )}
           <div className="border-t border-gray-100 my-1" />
           <button
             type="button"

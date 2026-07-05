@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
+/* Design tokens Iakoa — utilisables en classes Tailwind (bg-iakoa-blue, etc.) */
 @theme {
   --color-iakoa-blue: #2397FF;
+  --color-iakoa-blue-dark: #1A7FD9; /* hover/actif */
+  --color-iakoa-blue-light: #E9F4FF; /* fonds légers */
 }
 
 body {

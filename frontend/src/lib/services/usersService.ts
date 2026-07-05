@@ -6,6 +6,7 @@ export interface UpdateUserPayload {
   email?: string;
   password?: string;
   isCreator?: boolean;
+  notifyByEmail?: boolean;
 }
 
 // Met à jour le profil (le back interdit la modification du rôle)

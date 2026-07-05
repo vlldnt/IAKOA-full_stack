@@ -1,4 +1,9 @@
-import { MapPreview } from '../MapPreview';
+import { lazy, Suspense } from 'react';
+
+// Chargée à la demande : leaflet reste hors du bundle principal
+const MapPreview = lazy(() =>
+  import('../MapPreview').then(module => ({ default: module.MapPreview })),
+);
 
 const RADIUS_PRESETS = [1, 2, 5, 10, 25, 50, 100];
 
@@ -46,7 +51,9 @@ export function LocationSection({ radius, userPosition, onRadiusChange }: Locati
 
         {/* Carte - cachée en mobile/tablette */}
         <div className="hidden lg:block">
-          <MapPreview radius={radius} userPosition={userPosition} />
+          <Suspense fallback={<div className="w-full h-48 rounded-xl bg-gray-100 animate-pulse" />}>
+            <MapPreview radius={radius} userPosition={userPosition} />
+          </Suspense>
         </div>
       </div>
     </div>

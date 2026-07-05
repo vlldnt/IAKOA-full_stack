@@ -9,8 +9,9 @@ import { LogIn, MapPin, X } from "lucide-react";
 import { useFilters } from "@/features/events_page/FilterContext";
 import UnifiedAuthForm from '@/features/auth/components/UnifiedAuthForm';
 import ProfileDropdown from "./components/ProfileDropdown";
-import login from '@/assets/images/login.png';
-import happy from '@/assets/images/happy.png';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
+import login from '@/assets/images/login.webp';
+import happy from '@/assets/images/happy.webp';
 
 // Header principal de l'application
 const Header = forwardRef<HTMLElement>(function Header(_, ref) {
@@ -65,7 +66,10 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
               <MenuLink page="Carte" link="/map" icon={MapPin} />
             </ul>
             {user ? (
-              <ProfileDropdown user={user} onLogout={logout} />
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <ProfileDropdown user={user} onLogout={logout} />
+              </div>
             ) : (
               <button
                 onClick={openAuthModal}
@@ -85,9 +89,14 @@ const Header = forwardRef<HTMLElement>(function Header(_, ref) {
           <MenuLink page="Évènements" link="/" icon={IakoaIcon} />
           <MenuLink page="Carte" link="/map" icon={MapPin} />
           {user ? (
-            <li>
-              <ProfileDropdown user={user} onLogout={logout} isMobile={true} />
-            </li>
+            <>
+              <li>
+                <NotificationBell openUpward />
+              </li>
+              <li>
+                <ProfileDropdown user={user} onLogout={logout} isMobile={true} />
+              </li>
+            </>
           ) : (
             <MenuLink page="Se connecter" onClick={openAuthModal} icon={LogIn} />
           )}

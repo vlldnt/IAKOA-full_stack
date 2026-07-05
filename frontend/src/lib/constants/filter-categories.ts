@@ -11,13 +11,13 @@ export interface CategoryGroup {
 }
 
 // Import des images pour chaque catégorie
-import musique from '@/assets/images/musique.png';
-import sport from '@/assets/images/sport.png';
-import jeux from '@/assets/images/jeux.png';
-import gastronomie from '@/assets/images/gastronomie.png';
-import formation from '@/assets/images/formation.png';
-import marche from '@/assets/images/marche.png';
-import ecologie from '@/assets/images/ecologie.png';
+import musique from '@/assets/images/musique.webp';
+import sport from '@/assets/images/sport.webp';
+import jeux from '@/assets/images/jeux.webp';
+import gastronomie from '@/assets/images/gastronomie.webp';
+import formation from '@/assets/images/formation.webp';
+import marche from '@/assets/images/marche.webp';
+import ecologie from '@/assets/images/ecologie.webp';
 
 export const FILTER_CATEGORY_GROUPS: CategoryGroup[] = [
   {

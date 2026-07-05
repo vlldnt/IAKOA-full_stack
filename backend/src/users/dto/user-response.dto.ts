@@ -45,4 +45,10 @@ export class UserResponseDto {
     example: false,
   })
   isCreator: boolean;
+
+  @ApiProperty({
+    description: 'Recevoir les notifications par email',
+    example: true,
+  })
+  notifyByEmail: boolean;
 }

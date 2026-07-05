@@ -92,6 +92,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
         <img
           src={imageUrl}
           alt={event.name}
+          loading="lazy"
           className="w-full h-full object-cover"
         />
         {/* Actions flottantes */}

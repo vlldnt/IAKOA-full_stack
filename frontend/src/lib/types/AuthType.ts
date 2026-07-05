@@ -4,6 +4,7 @@ export interface UserType {
   name: string;
   email: string;
   isCreator: boolean;
+  notifyByEmail: boolean;
   role: 'ADMIN' | 'USER';
   createdAt: string;
   updatedAt: string;

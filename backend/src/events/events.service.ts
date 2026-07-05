@@ -10,9 +10,10 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { EventResponseDto } from './dto/event-response.dto';
 import { FilterEventsDto } from './dto/filter-events.dto';
-import { EventStatus, Prisma, Role } from '@prisma/client';
+import { EventStatus, NotificationType, Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MediaService } from 'src/media/media.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 // Relations chargées avec chaque événement retourné par l'API
 const EVENT_INCLUDE = { media: true, company: true, categories: true } as const;
@@ -22,6 +23,7 @@ export class EventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaService: MediaService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(
@@ -272,6 +274,28 @@ export class EventsService {
         data: { status, moderationNote: moderationNote ?? null },
         include: EVENT_INCLUDE,
       });
+
+      // Notifier l'organisateur du verdict (best-effort)
+      if (status === EventStatus.PUBLISHED) {
+        await this.notificationsService.notifyEventOwner(id, {
+          type: NotificationType.EVENT_PUBLISHED,
+          title: `Votre événement « ${event.name} » est publié`,
+          body: 'Il est maintenant visible par tous les utilisateurs Iakoa.',
+        });
+      } else if (status === EventStatus.REJECTED) {
+        await this.notificationsService.notifyEventOwner(id, {
+          type: NotificationType.EVENT_REJECTED,
+          title: `Votre événement « ${event.name} » a été refusé`,
+          body: `Motif : ${moderationNote}. Modifiez-le pour le soumettre à nouveau.`,
+        });
+      } else if (status === EventStatus.CANCELLED) {
+        await this.notificationsService.notifyFavoriters(id, {
+          type: NotificationType.EVENT_CANCELLED,
+          title: `Événement annulé : ${event.name}`,
+          body: moderationNote ? `Motif : ${moderationNote}` : undefined,
+        });
+      }
+
       return new EventResponseDto(event);
     } catch (error) {
       if (error.code === 'P2025') {
@@ -354,6 +378,13 @@ export class EventsService {
         include: EVENT_INCLUDE,
       });
 
+      // Prévenir les utilisateurs qui suivent cet événement (best-effort)
+      await this.notificationsService.notifyFavoriters(id, {
+        type: NotificationType.EVENT_UPDATED,
+        title: `Événement modifié : ${updatedEvent.name}`,
+        body: "Un événement de vos favoris a été mis à jour. Vérifiez la date et le lieu.",
+      });
+
       return new EventResponseDto(updatedEvent);
     } catch (error) {
       if (error.code === 'P2002') {
@@ -383,10 +414,27 @@ export class EventsService {
       throw new ForbiddenException("Vous n'êtes pas autorisé à supprimer cet événement.");
     }
 
+    // Récupérer les suiveurs avant la suppression (cascade sur les favoris)
+    const favoriters = await this.prisma.userFavorite.findMany({
+      where: { eventId: id },
+      select: { userId: true },
+    });
+
     try {
       await this.prisma.event.delete({
         where: { id },
       });
+
+      // Prévenir les suiveurs (après suppression : sans lien vers l'événement)
+      await Promise.all(
+        favoriters.map(favorite =>
+          this.notificationsService.notifyUser(favorite.userId, {
+            type: NotificationType.EVENT_CANCELLED,
+            title: `Événement annulé : ${event.name}`,
+            body: "Un événement de vos favoris a été annulé par son organisateur.",
+          }),
+        ),
+      );
 
       return { message: `Événement ${event.name} supprimé avec succès.` };
     } catch (error) {

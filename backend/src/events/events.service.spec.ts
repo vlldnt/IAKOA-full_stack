@@ -4,6 +4,8 @@ import { EventStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { MediaService } from '../media/media.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateEventDto } from './dto/create-event.dto';
 
 const PARIS = { lat: 48.8566, lng: 2.3522 };
@@ -60,7 +62,7 @@ describe('EventsService (création & recherche filtrée SQL)', () => {
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EventsService, MediaService, PrismaService],
+      providers: [EventsService, MediaService, PrismaService, NotificationsService, MailService],
     }).compile();
 
     eventsService = module.get(EventsService);

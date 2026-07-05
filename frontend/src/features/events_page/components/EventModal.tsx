@@ -1,7 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import {
   X,
   MapPin,
@@ -28,14 +25,8 @@ import googlemapIcon from '@/assets/icons/googlemap.png';
 import mapsappleIcon from '@/assets/icons/mapsapple.png';
 import wazeIcon from '@/assets/icons/waze.png';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// Chargée à la demande : leaflet reste hors du bundle principal
+const EventModalMap = lazy(() => import('./EventModalMap'));
 
 const IAKOA_BLUE = '#2397FF';
 
@@ -348,19 +339,9 @@ export function EventModal({ event, onClose }: EventModalProps) {
               <div className="flex flex-col gap-3">
                 {/* Map paysage */}
                 <div className="w-full h-48 rounded-xl overflow-hidden border border-gray-100">
-                  <MapContainer
-                    center={[lat, lng]}
-                    zoom={14}
-                    className="w-full h-full"
-                    zoomControl={false}
-                    dragging={false}
-                    scrollWheelZoom={false}
-                    doubleClickZoom={false}
-                    attributionControl={false}
-                  >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <Marker position={[lat, lng]} />
-                  </MapContainer>
+                  <Suspense fallback={<div className="w-full h-full bg-gray-100 animate-pulse" />}>
+                    <EventModalMap lat={lat} lng={lng} />
+                  </Suspense>
                 </div>
 
                 {/* Hint + icônes navigation */}
