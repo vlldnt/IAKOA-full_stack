@@ -8,12 +8,13 @@ import {
   CalendarDays,
   Globe,
   Building2,
-  Heart,
   Share2,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
 import type { EventType } from '@/lib/types/EventType';
+import { FavoriteButton } from '@/features/favorites/FavoriteButton';
+import { formatDate, formatPrice } from '@/lib/utils/format';
 import {
   getCategoryHexColor,
   getCategoryLabel,
@@ -37,20 +38,6 @@ L.Icon.Default.mergeOptions({
 });
 
 const IAKOA_BLUE = '#2397FF';
-
-export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
-
-export function formatPrice(pricing: number): string {
-  if (pricing === 0) return 'Gratuit';
-  const n = pricing % 1 === 0 ? pricing.toFixed(0) : pricing.toFixed(2);
-  return `${n} €`;
-}
 
 function getRemainingTime(dateStr: string): string {
   const diff = new Date(dateStr).getTime() - Date.now();
@@ -424,14 +411,7 @@ export function EventModal({ event, onClose }: EventModalProps) {
                 <Share2 className="h-4 w-4" />
                 Partager
               </button>
-              <button
-                disabled
-                title="Ajouter aux favoris (bientôt disponible)"
-                className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-400 bg-gray-100 cursor-not-allowed"
-              >
-                <Heart className="h-4 w-4" />
-                Favoris
-              </button>
+              <FavoriteButton event={event} variant="wide" />
             </div>
 
             <WebsiteButton url={websiteUrl} />

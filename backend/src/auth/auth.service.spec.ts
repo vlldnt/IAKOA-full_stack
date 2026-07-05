@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
-import { UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { VerificationTokenType } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -160,6 +164,52 @@ describe('AuthService (sessions, rotation, reset)', () => {
       // L'autre appareil reste connecté
       await expect(
         authService.validateRefreshToken(phone.user.id, laptopSid, laptop.refresh_token),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('sessions actives', () => {
+    it('liste les sessions actives et marque la session courante', async () => {
+      const phone = await authService.register({ ...testUser }, 'iphone');
+      await authService.login({ ...testUser }, 'macbook');
+      const { sid } = decodeJwt(phone.refresh_token);
+
+      const sessions = await authService.listSessions(phone.user.id, sid);
+      expect(sessions).toHaveLength(2);
+      expect(sessions.find(s => s.id === sid)?.isCurrent).toBe(true);
+      expect(sessions.filter(s => s.isCurrent)).toHaveLength(1);
+    });
+
+    it('révoque une session précise (déconnexion à distance)', async () => {
+      const phone = await authService.register({ ...testUser }, 'iphone');
+      const laptop = await authService.login({ ...testUser }, 'macbook');
+      const { sid: phoneSid } = decodeJwt(phone.refresh_token);
+      const { sid: laptopSid } = decodeJwt(laptop.refresh_token);
+
+      await authService.revokeSession(phone.user.id, laptopSid);
+
+      // La session révoquée est refusée, il ne reste qu'un appareil
+      await expect(
+        authService.validateRefreshToken(phone.user.id, laptopSid, laptop.refresh_token),
+      ).rejects.toThrow(UnauthorizedException);
+      await expect(authService.listSessions(phone.user.id, phoneSid)).resolves.toHaveLength(1);
+    });
+
+    it("interdit de révoquer la session d'un autre utilisateur", async () => {
+      const victim = await authService.register({ ...testUser }, 'iphone');
+      const attacker = await authService.register({
+        name: 'Autre',
+        email: 'autre@example.com',
+        password: 'Password123!',
+      });
+      const { sid: victimSid } = decodeJwt(victim.refresh_token);
+
+      await expect(authService.revokeSession(attacker.user.id, victimSid)).rejects.toThrow(
+        NotFoundException,
+      );
+      // La session de la victime reste valide
+      await expect(
+        authService.validateRefreshToken(victim.user.id, victimSid, victim.refresh_token),
       ).resolves.toBeDefined();
     });
   });

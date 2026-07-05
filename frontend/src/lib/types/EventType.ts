@@ -4,10 +4,10 @@ export interface Coordinates {
 }
 
 export interface Location {
-  address: string;
-  city: string;
-  postalCode: string;
-  country: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
   coordinates: Coordinates;
 }
 
@@ -24,6 +24,9 @@ export interface SocialNetworks {
   tiktok?: string;
 }
 
+// Statut de modération (cycle de vie d'un événement côté back-office)
+export type EventStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'CANCELLED';
+
 export interface EventType {
   id?: string;
   name: string;
@@ -38,7 +41,9 @@ export interface EventType {
     website?: string;
     socialNetworks?: SocialNetworks;
   };
-  website: string;
+  website?: string | null;
   categories: string[];
   media: Media[];
+  status?: EventStatus;
+  moderationNote?: string | null;
 }

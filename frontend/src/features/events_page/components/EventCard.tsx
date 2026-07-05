@@ -1,6 +1,7 @@
-import { Calendar, Euro, Clock, MapPin, Share2, Heart } from 'lucide-react';
+import { Calendar, Euro, Clock, MapPin, Share2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { EventType } from '@/lib/types/EventType';
+import { FavoriteButton } from '@/features/favorites/FavoriteButton';
 import {
   getCategoryLabel,
   getCategoryHexColor,
@@ -105,13 +106,7 @@ export function EventCard({ event, onClick }: EventCardProps) {
           >
             <Share2 size={14} />
           </button>
-          <button
-            disabled
-            title="Ajouter aux favoris (bientôt disponible)"
-            className="flex items-center justify-center w-8 h-8 bg-white/80 rounded-full cursor-not-allowed text-gray-400"
-          >
-            <Heart size={14} />
-          </button>
+          <FavoriteButton event={event} />
         </div>
       </figure>
 

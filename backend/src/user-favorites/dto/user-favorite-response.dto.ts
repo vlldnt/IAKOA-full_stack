@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { EventResponseDto } from '../../events/dto/event-response.dto';
 
 export class UserFavoriteResponseDto {
   @ApiProperty({
@@ -26,18 +27,11 @@ export class UserFavoriteResponseDto {
   eventId: string;
 
   @ApiProperty({
-    description: "Informations sur l'événement",
+    description: "Informations sur l'événement (format identique aux endpoints /events)",
     required: false,
+    type: EventResponseDto,
   })
-  event?: {
-    id: string;
-    name: string;
-    date: Date;
-    description: string;
-    pricing: number;
-    location: any;
-    website: string | null;
-  };
+  event?: EventResponseDto;
 
   @ApiProperty({
     description: "Informations sur l'utilisateur",

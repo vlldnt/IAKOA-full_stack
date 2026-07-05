@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { VerificationTokenType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -132,6 +137,38 @@ export class AuthService {
       });
     }
     return { message: 'Déconnexion réussie' };
+  }
+
+  /**
+   * Sessions actives de l'utilisateur (une par appareil connecté).
+   * `isCurrent` marque la session utilisée pour cette requête.
+   */
+  async listSessions(userId: string, currentSessionId?: string) {
+    const sessions = await this.prisma.refreshSession.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true, userAgent: true, createdAt: true, updatedAt: true },
+    });
+    return sessions.map(session => ({
+      ...session,
+      isCurrent: session.id === currentSessionId,
+    }));
+  }
+
+  /**
+   * Révoque une session précise de l'utilisateur (déconnexion à distance
+   * d'un appareil). Le filtre sur userId empêche de toucher aux sessions
+   * d'un autre compte.
+   */
+  async revokeSession(userId: string, sessionId: string) {
+    const result = await this.prisma.refreshSession.updateMany({
+      where: { id: sessionId, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (result.count === 0) {
+      throw new NotFoundException('Session non trouvée ou déjà déconnectée.');
+    }
+    return { message: 'Session déconnectée.' };
   }
 
   /**

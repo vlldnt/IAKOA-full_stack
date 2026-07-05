@@ -100,11 +100,12 @@ export class UsersService {
       }
     }
 
-    // Empêcher un utilisateur non-admin de modifier son rôle ou isCreator
+    // Le rôle reste réservé aux admins. isCreator est self-service :
+    // devenir organisateur ne donne aucun privilège (companies validées
+    // et événements modérés par un admin avant publication).
     const data: any = { ...updateUserDto };
     if (userRole !== Role.ADMIN) {
       delete data.role;
-      delete data.isCreator;
     }
 
     // Hasher le nouveau mot de passe si fourni

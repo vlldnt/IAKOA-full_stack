@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { AuthService } from '../auth.service';
@@ -6,12 +6,19 @@ import { AuthService } from '../auth.service';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private authService: AuthService) {
+    // Placeholder si les identifiants manquent : l'app démarre en dev sans
+    // clés OAuth (le flux Google échouera côté Google, le reste fonctionne).
     super({
-      clientID: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientID: process.env.GOOGLE_CLIENT_ID || 'google-client-id-manquant',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'google-client-secret-manquant',
       callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback',
       scope: ['email', 'profile'],
     });
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      new Logger(GoogleStrategy.name).warn(
+        'GOOGLE_CLIENT_ID absent : la connexion Google est désactivée.',
+      );
+    }
   }
 
   async validate(

@@ -9,6 +9,14 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserFavoriteDto } from './dto/create-user-favorite.dto';
 import { UserFavoriteResponseDto } from './dto/user-favorite-response.dto';
+import { EventResponseDto } from '../events/dto/event-response.dto';
+
+// L'événement est renvoyé au même format que les endpoints /events
+// (catégories en slugs, médias, company) pour que le front affiche
+// directement des cartes complètes.
+const FAVORITE_EVENT_INCLUDE = {
+  include: { media: true, company: true, categories: true },
+} as const;
 
 @Injectable()
 export class UserFavoritesService {
@@ -53,7 +61,7 @@ export class UserFavoritesService {
           eventId: createUserFavoriteDto.eventId,
         },
         include: {
-          event: true,
+          event: FAVORITE_EVENT_INCLUDE,
           user: {
             select: {
               id: true,
@@ -65,7 +73,10 @@ export class UserFavoritesService {
         },
       });
 
-      return new UserFavoriteResponseDto(favorite);
+      return new UserFavoriteResponseDto({
+        ...favorite,
+        event: new EventResponseDto(favorite.event),
+      });
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
@@ -94,14 +105,20 @@ export class UserFavoritesService {
       const favorites = await this.prisma.userFavorite.findMany({
         where: { userId },
         include: {
-          event: true,
+          event: FAVORITE_EVENT_INCLUDE,
         },
         orderBy: {
           createdAt: 'desc',
         },
       });
 
-      return favorites.map(favorite => new UserFavoriteResponseDto(favorite));
+      return favorites.map(
+        favorite =>
+          new UserFavoriteResponseDto({
+            ...favorite,
+            event: new EventResponseDto(favorite.event),
+          }),
+      );
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;

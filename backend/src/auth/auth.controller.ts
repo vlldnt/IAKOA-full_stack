@@ -2,7 +2,10 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Body,
+  Param,
+  ParseUUIDPipe,
   HttpCode,
   HttpStatus,
   ValidationPipe,
@@ -132,6 +135,42 @@ export class AuthController {
     const result = await this.authService.logout(user.sessionId);
     clearAuthCookies(res);
     return result;
+  }
+
+  /**
+   * GET /auth/sessions - Sessions actives (appareils connectés)
+   */
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Lister les sessions actives',
+    description:
+      "Retourne les appareils connectés de l'utilisateur. La session courante est marquée isCurrent.",
+  })
+  @ApiResponse({ status: 200, description: 'Liste des sessions actives' })
+  @ApiResponse({ status: 401, description: 'Non authentifié' })
+  listSessions(@GetUser() user: AuthenticatedUser) {
+    return this.authService.listSessions(user.id, user.sessionId);
+  }
+
+  /**
+   * DELETE /auth/sessions/:id - Déconnecter un appareil
+   */
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Révoquer une session',
+    description:
+      "Déconnecte un appareil précis. Seules les sessions de l'utilisateur connecté sont accessibles.",
+  })
+  @ApiResponse({ status: 200, description: 'Session révoquée' })
+  @ApiResponse({ status: 401, description: 'Non authentifié' })
+  @ApiResponse({ status: 404, description: 'Session non trouvée' })
+  revokeSession(@GetUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.authService.revokeSession(user.id, id);
   }
 
   /**

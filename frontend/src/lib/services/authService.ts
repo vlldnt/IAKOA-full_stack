@@ -1,3 +1,5 @@
+import { apiFetch } from '@/lib/api-client';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Service d'authentification - gère tous les appels API.
@@ -89,6 +91,25 @@ export async function verifyEmailAPI(token: string) {
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, message: data.message as string | undefined };
+}
+
+// Session active (un appareil connecté)
+export interface SessionInfo {
+  id: string;
+  userAgent: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isCurrent: boolean;
+}
+
+// Liste les appareils connectés de l'utilisateur
+export async function fetchSessionsAPI(): Promise<SessionInfo[]> {
+  return apiFetch<SessionInfo[]>('/auth/sessions');
+}
+
+// Déconnecte un appareil précis
+export async function revokeSessionAPI(sessionId: string): Promise<void> {
+  await apiFetch<{ message: string }>(`/auth/sessions/${sessionId}`, { method: 'DELETE' });
 }
 
 // Récupère les informations de l'utilisateur connecté

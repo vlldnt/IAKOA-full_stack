@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, Profile } from 'passport-facebook';
 import { AuthService } from '../auth.service';
@@ -6,14 +6,21 @@ import { AuthService } from '../auth.service';
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(private authService: AuthService) {
+    // Placeholder si les identifiants manquent : l'app démarre en dev sans
+    // clés OAuth (le flux Facebook échouera côté Facebook, le reste fonctionne).
     super({
-      clientID: process.env.FACEBOOK_APP_ID || '',
-      clientSecret: process.env.FACEBOOK_APP_SECRET || '',
+      clientID: process.env.FACEBOOK_APP_ID || 'facebook-app-id-manquant',
+      clientSecret: process.env.FACEBOOK_APP_SECRET || 'facebook-app-secret-manquant',
       callbackURL:
         process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:3000/auth/facebook/callback',
       scope: ['email', 'public_profile'],
       profileFields: ['id', 'emails', 'name', 'photos'],
     });
+    if (!process.env.FACEBOOK_APP_ID) {
+      new Logger(FacebookStrategy.name).warn(
+        'FACEBOOK_APP_ID absent : la connexion Facebook est désactivée.',
+      );
+    }
   }
 
   async validate(

@@ -398,11 +398,13 @@ describe('UsersService', () => {
       expect(updated.name).toBe('Test'); // Mais le nom doit changer
     });
 
-    it('devrait empêcher un USER de modifier isCreator', async () => {
+    it('devrait permettre à un USER de devenir organisateur (isCreator self-service)', async () => {
       const updated = await usersService.update(userId, { name: 'Test', isCreator: true }, Role.USER);
 
-      expect(updated.isCreator).toBe(false); // isCreator ne doit pas changer
-      expect(updated.name).toBe('Test'); // Mais le nom doit changer
+      // Devenir organisateur ne confère aucun privilège : companies et
+      // événements restent soumis à validation/modération admin.
+      expect(updated.isCreator).toBe(true);
+      expect(updated.name).toBe('Test');
     });
 
     it('devrait permettre à un ADMIN de modifier le rôle', async () => {
